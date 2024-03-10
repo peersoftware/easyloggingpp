@@ -3215,6 +3215,11 @@ class Writer : base::NoCopy {
     return *this;
   }
 
+  template <std::size_t N>
+  inline Writer& operator<<(const wchar_t(&log)[N]) {
+    return this->operator<<(static_cast<const wchar_t *>(log));
+  }
+
   inline Writer& operator<<(std::ostream& (*log)(std::ostream&)) {
 #if ELPP_LOGGING_ENABLED
     if (m_proceed) {
