@@ -3234,6 +3234,7 @@ class Writer : base::NoCopy {
   }
 
   Writer& construct(Logger* logger, bool needLock = true);
+  Writer& construct(int, const std::string& loggerId);
   Writer& construct(int count, const char* loggerIds, ...);
  protected:
   LogMessage* m_msg;

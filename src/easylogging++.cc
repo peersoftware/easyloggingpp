@@ -2535,6 +2535,12 @@ Writer& Writer::construct(Logger* logger, bool needLock) {
   return *this;
 }
 
+Writer& Writer::construct(int, const std::string& loggerId) {
+  initializeLogger(loggerId);
+  m_messageBuilder.initialize(m_logger);
+  return *this;
+}
+
 Writer& Writer::construct(int count, const char* loggerIds, ...) {
   if (ELPP->hasFlag(LoggingFlag::MultiLoggerSupport)) {
     va_list loggersList;
