@@ -2873,9 +2873,20 @@ m_logger->stream() << " ";\
 return *this;\
 }
 
+#if defined(ELPP_UNICODE)
   inline MessageBuilder& operator<<(const std::string& msg) {
     return operator<<(msg.c_str());
   }
+
+  ELPP_SIMPLE_LOG(const std::wstring&)
+#else
+  ELPP_SIMPLE_LOG(const std::string&)
+
+  inline MessageBuilder& operator<<(const std::wstring& msg) {
+    return operator<<(msg.c_str());
+  }
+#endif
+
   ELPP_SIMPLE_LOG(char)
   ELPP_SIMPLE_LOG(bool)
   ELPP_SIMPLE_LOG(signed short)
@@ -2890,9 +2901,7 @@ return *this;\
   ELPP_SIMPLE_LOG(const char*)
   ELPP_SIMPLE_LOG(const void*)
   ELPP_SIMPLE_LOG(long double)
-  inline MessageBuilder& operator<<(const std::wstring& msg) {
-    return operator<<(msg.c_str());
-  }
+
   MessageBuilder& operator<<(const wchar_t* msg);
   // ostream manipulators
   inline MessageBuilder& operator<<(std::ostream& (*OStreamMani)(std::ostream&)) {
