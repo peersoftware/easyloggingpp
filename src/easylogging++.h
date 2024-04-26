@@ -386,6 +386,7 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <set>
 #include <utility>
 #include <functional>
 #include <algorithm>
@@ -1895,6 +1896,7 @@ namespace base {
 typedef std::shared_ptr<base::type::fstream_t> FileStreamPtr;
 typedef std::unordered_map<std::string, FileStreamPtr> LogStreamsReferenceMap;
 typedef std::shared_ptr<base::LogStreamsReferenceMap> LogStreamsReferenceMapPtr;
+typedef std::set<std::string> FilenameSet;
 /// @brief Configurations with data types.
 ///
 /// @detail el::Configurations have string based values. This is whats used internally in order to read correct configurations.
@@ -1928,6 +1930,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
   base::type::fstream_t* fileStream(Level level);
   std::size_t maxLogFileSize(Level level);
   std::size_t logFlushThreshold(Level level);
+  FilenameSet filenames();
 
  private:
   Configurations* m_configurations;
@@ -2385,10 +2388,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
     return get(id, false) != nullptr;
   }
 
-  inline void unregister(Logger*& logger) {
-    base::threading::ScopedLock scopedLock(lock());
-    base::utils::Registry<Logger, std::string>::unregister(logger->id());
-  }
+  void unregister(Logger*& logger);
 
   inline LogStreamsReferenceMapPtr logStreamsReference(void) {
     return m_logStreamsReference;
@@ -2411,6 +2411,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
   std::unordered_map<std::string, base::type::LoggerRegistrationCallbackPtr> m_loggerRegistrationCallbacks;
   friend class el::base::Storage;
 
+  void unsafeEraseUnused(const FilenameSet& filenames);
   void unsafeFlushAll(void);
 };
 /// @brief Represents registries for verbose logging

@@ -1667,6 +1667,17 @@ std::size_t TypedConfigurations::logFlushThreshold(Level level) {
   return getConfigByVal<std::size_t>(level, &m_logFlushThresholdMap, "logFlushThreshold");
 }
 
+FilenameSet TypedConfigurations::filenames() {
+  FilenameSet filenameSet;
+  base::threading::ScopedLock scopedLock(lock());
+
+  for (auto it = m_filenameMap.cbegin(); it != m_filenameMap.cend(); ++it) {
+    filenameSet.emplace(it->second);
+  }
+
+  return filenameSet;
+}
+
 void TypedConfigurations::build(Configurations* configurations) {
   base::threading::ScopedLock scopedLock(lock());
   auto getBool = [] (std::string boolStr) -> bool {  // Pass by value for trimming
@@ -1807,9 +1818,21 @@ void TypedConfigurations::insertFile(Level level, const std::string& fullFilenam
       setValue(level, false, &m_toFileMap);
     }
   };
+
   // If we dont have file conf for any level, create it for Level::Global first
   // otherwise create for specified level
-  create(m_filenameMap.empty() && m_fileStreamMap.empty() ? Level::Global : level);
+  if (m_filenameMap.empty() && m_fileStreamMap.empty()) {
+    level = Level::Global;
+  }
+
+  if (ELPP != nullptr && ELPP->registeredLoggers() != nullptr) {
+    // Lock to protect m_logStreamsReference access
+    base::threading::ScopedLock scopedLock(ELPP->registeredLoggers()->lock());
+
+    create(level);
+  } else {
+    create(level);
+  }
 }
 
 bool TypedConfigurations::unsafeValidateFileRolling(Level level, const PreRollOutCallback& preRollOutCallback) {
@@ -1919,6 +1942,24 @@ bool RegisteredLoggers::remove(const std::string& id) {
     unregister(logger);
   }
   return true;
+}
+
+void RegisteredLoggers::unregister(Logger*& logger) {
+  auto filenames = logger->typedConfigurations()->filenames();
+  base::threading::ScopedLock scopedLock(lock());
+
+  base::utils::Registry<Logger, std::string>::unregister(logger->id());
+  unsafeEraseUnused(filenames);
+}
+
+void RegisteredLoggers::unsafeEraseUnused(const FilenameSet& filenames) {
+  for (const auto &filename : filenames) {
+    auto it = m_logStreamsReference->find(filename);
+
+    if (it != m_logStreamsReference->end() && it->second.use_count() == 1) {
+        m_logStreamsReference->erase(it);
+    }
+  }
 }
 
 void RegisteredLoggers::unsafeFlushAll(void) {
