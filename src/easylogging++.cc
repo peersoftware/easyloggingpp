@@ -1797,14 +1797,17 @@ void TypedConfigurations::insertFile(Level level, const std::string& fullFilenam
     base::utils::File::createPath(filePath);
   }
   auto create = [&](Level level) {
-    base::LogStreamsReferenceMap::iterator filestreamIter = m_logStreamsReference->find(resolvedFilename);
+    base::threading::ScopedLock scopedLock(m_logStreamsReference->lock());
+    auto& logStreamsReferenceMap = m_logStreamsReference->getMap();
+    auto filestreamIter = logStreamsReferenceMap.find(resolvedFilename);
+
     base::type::fstream_t* fs = nullptr;
-    if (filestreamIter == m_logStreamsReference->end()) {
+    if (filestreamIter == logStreamsReferenceMap.end()) {
       // We need a completely new stream, nothing to share with
       fs = base::utils::File::newFileStream(resolvedFilename);
       m_filenameMap.insert(std::make_pair(level, resolvedFilename));
       m_fileStreamMap.insert(std::make_pair(level, base::FileStreamPtr(fs)));
-      m_logStreamsReference->insert(std::make_pair(resolvedFilename, base::FileStreamPtr(m_fileStreamMap.at(level))));
+      logStreamsReferenceMap.insert(std::make_pair(resolvedFilename, base::FileStreamPtr(m_fileStreamMap.at(level))));
     } else {
       // Woops! we have an existing one, share it!
       m_filenameMap.insert(std::make_pair(level, filestreamIter->first));
@@ -1818,21 +1821,9 @@ void TypedConfigurations::insertFile(Level level, const std::string& fullFilenam
       setValue(level, false, &m_toFileMap);
     }
   };
-
   // If we dont have file conf for any level, create it for Level::Global first
   // otherwise create for specified level
-  if (m_filenameMap.empty() && m_fileStreamMap.empty()) {
-    level = Level::Global;
-  }
-
-  if (ELPP != nullptr && ELPP->registeredLoggers() != nullptr) {
-    // Lock to protect m_logStreamsReference access
-    base::threading::ScopedLock scopedLock(ELPP->registeredLoggers()->lock());
-
-    create(level);
-  } else {
-    create(level);
-  }
+  create(m_filenameMap.empty() && m_fileStreamMap.empty() ? Level::Global : level);
 }
 
 bool TypedConfigurations::unsafeValidateFileRolling(Level level, const PreRollOutCallback& preRollOutCallback) {
@@ -1946,26 +1937,36 @@ bool RegisteredLoggers::remove(const std::string& id) {
 
 void RegisteredLoggers::unregister(Logger*& logger) {
   auto filenames = logger->typedConfigurations()->filenames();
-  base::threading::ScopedLock scopedLock(lock());
 
-  base::utils::Registry<Logger, std::string>::unregister(logger->id());
-  unsafeEraseUnused(filenames);
+  {
+    base::threading::ScopedLock scopedLock(lock());
+
+    base::utils::Registry<Logger, std::string>::unregister(logger->id());
+  }
+
+  eraseUnused(filenames);
 }
 
-void RegisteredLoggers::unsafeEraseUnused(const FilenameSet& filenames) {
-  for (const auto &filename : filenames) {
-    auto it = m_logStreamsReference->find(filename);
+void RegisteredLoggers::eraseUnused(const FilenameSet& filenames) {
+  base::threading::ScopedLock scopedLock(m_logStreamsReference->lock());
+  auto& logStreamsReferenceMap = m_logStreamsReference->getMap();
 
-    if (it != m_logStreamsReference->end() && it->second.use_count() == 1) {
-        m_logStreamsReference->erase(it);
+  for (const auto& filename : filenames) {
+    auto it = logStreamsReferenceMap.find(filename);
+
+    if (it != logStreamsReferenceMap.end() && it->second.use_count() == 1) {
+        logStreamsReferenceMap.erase(it);
     }
   }
 }
 
 void RegisteredLoggers::unsafeFlushAll(void) {
   ELPP_INTERNAL_INFO(1, "Flushing all log files");
-  for (base::LogStreamsReferenceMap::iterator it = m_logStreamsReference->begin();
-       it != m_logStreamsReference->end(); ++it) {
+
+  auto& logStreamsReferenceMap = m_logStreamsReference->getMap();
+
+  for (auto it = logStreamsReferenceMap.begin();
+       it != logStreamsReferenceMap.end(); ++it) {
     if (it->second.get() == nullptr) continue;
     it->second->flush();
   }

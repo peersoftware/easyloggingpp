@@ -1894,9 +1894,22 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
 
 namespace base {
 typedef std::shared_ptr<base::type::fstream_t> FileStreamPtr;
-typedef std::unordered_map<std::string, FileStreamPtr> LogStreamsReferenceMap;
+
+class LogStreamsReferenceMap : public base::threading::ThreadSafe {
+ public:
+  typedef std::unordered_map<std::string, FileStreamPtr> StreamsMap;
+
+  StreamsMap& getMap() {
+    return m_streams;
+  }
+
+ private:
+  StreamsMap m_streams;
+};
+
 typedef std::shared_ptr<base::LogStreamsReferenceMap> LogStreamsReferenceMapPtr;
 typedef std::set<std::string> FilenameSet;
+
 /// @brief Configurations with data types.
 ///
 /// @detail el::Configurations have string based values. This is whats used internally in order to read correct configurations.
@@ -2395,7 +2408,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
   }
 
   inline void flushAll(void) {
-    base::threading::ScopedLock scopedLock(lock());
+    base::threading::ScopedLock scopedLock(m_logStreamsReference->lock());
     unsafeFlushAll();
   }
 
@@ -2411,7 +2424,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
   std::unordered_map<std::string, base::type::LoggerRegistrationCallbackPtr> m_loggerRegistrationCallbacks;
   friend class el::base::Storage;
 
-  void unsafeEraseUnused(const FilenameSet& filenames);
+  void eraseUnused(const FilenameSet& filenames);
   void unsafeFlushAll(void);
 };
 /// @brief Represents registries for verbose logging
