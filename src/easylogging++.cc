@@ -2583,6 +2583,13 @@ Writer& Writer::construct(int, const std::string& loggerId) {
   return *this;
 }
 
+Writer& Writer::construct(int, std::vector<std::string>&& loggerIds) {
+  m_loggerIds = std::move(loggerIds);
+  initializeLogger(m_loggerIds.at(0));
+  m_messageBuilder.initialize(m_logger);
+  return *this;
+}
+
 Writer& Writer::construct(int count, const char* loggerIds, ...) {
   if (ELPP->hasFlag(LoggingFlag::MultiLoggerSupport)) {
     va_list loggersList;
@@ -2632,7 +2639,7 @@ void Writer::initializeLogger(const std::string& loggerId, bool lookup, bool nee
 
 void Writer::processDispatch() {
 #if ELPP_LOGGING_ENABLED
-  if (ELPP->hasFlag(LoggingFlag::MultiLoggerSupport)) {
+  if (!m_loggerIds.empty()) {
     bool firstDispatched = false;
     base::type::string_t logMessage;
     std::size_t i = 0;
@@ -2642,9 +2649,7 @@ void Writer::processDispatch() {
           m_logger->stream() << logMessage;
         } else {
           firstDispatched = true;
-          if (m_loggerIds.size() > 1) {
-            logMessage = m_logger->stream().str();
-          }
+          logMessage = m_logger->stream().str();
         }
         triggerDispatch();
       } else if (m_logger != nullptr) {
