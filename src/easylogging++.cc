@@ -272,13 +272,8 @@ bool Configuration::Predicate::operator()(const Configuration* conf) const {
 
 // Configurations
 
-Configurations::Configurations(void) :
-  m_configurationFile(std::string()),
-  m_isFromFile(false) {
-}
-
-Configurations::Configurations(const std::string& configurationFile, bool useDefaultsForRemaining,
-                               Configurations* base) :
+Configurations::Configurations(const std::filesystem::path& configurationFile,
+                               bool useDefaultsForRemaining, Configurations* base) :
   m_configurationFile(configurationFile),
   m_isFromFile(false) {
   parseFromFile(configurationFile, base);
@@ -287,11 +282,13 @@ Configurations::Configurations(const std::string& configurationFile, bool useDef
   }
 }
 
-bool Configurations::parseFromFile(const std::string& configurationFile, Configurations* base) {
+bool Configurations::parseFromFile(const std::filesystem::path& configurationFile, Configurations* base) {
   // We initial assertion with true because if we have assertion disabled, we want to pass this
   // check and if assertion is enabled we will have values re-assigned any way.
   bool assertionPassed = true;
-  ELPP_ASSERT((assertionPassed = base::utils::File::pathExists(configurationFile.c_str(), true)) == true,
+  std::error_code ec;
+
+  ELPP_ASSERT((assertionPassed = std::filesystem::exists(configurationFile, ec)) == true,
               "Configuration file [" << configurationFile << "] does not exist!");
   if (!assertionPassed) {
     return false;
@@ -404,7 +401,7 @@ void Configurations::setRemainingToDefault(void) {
                       std::string("%datetime %level [%logger] [%func] [%loc] %msg"));
 }
 
-bool Configurations::Parser::parseFromFile(const std::string& configurationFile, Configurations* sender,
+bool Configurations::Parser::parseFromFile(const std::filesystem::path& configurationFile, Configurations* sender,
     Configurations* base) {
   sender->setFromBase(base);
   std::ifstream fileStream_(configurationFile.c_str(), std::ifstream::in);
@@ -724,8 +721,8 @@ namespace utils {
 
 // File
 
-base::type::fstream_t* File::newFileStream(const std::string& filename) {
-  base::type::fstream_t *fs = new base::type::fstream_t(filename.c_str(),
+base::type::fstream_t* File::newFileStream(const std::filesystem::path& filename) {
+  base::type::fstream_t *fs = new base::type::fstream_t(filename,
       base::type::fstream_t::out
 #if !defined(ELPP_FRESH_LOG_FILE)
       | base::type::fstream_t::app
@@ -758,72 +755,23 @@ std::size_t File::getSizeOfFile(base::type::fstream_t* fs) {
   return size;
 }
 
-bool File::pathExists(const char* path, bool considerFile) {
-  if (path == nullptr) {
-    return false;
-  }
-#if ELPP_OS_UNIX
-  ELPP_UNUSED(considerFile);
-  struct stat st;
-  return (stat(path, &st) == 0);
-#elif ELPP_OS_WINDOWS
-  DWORD fileType = GetFileAttributesA(path);
-  if (fileType == INVALID_FILE_ATTRIBUTES) {
-    return false;
-  }
-  return considerFile ? true : ((fileType & FILE_ATTRIBUTE_DIRECTORY) == 0 ? false : true);
-#endif  // ELPP_OS_UNIX
-}
-
-bool File::createPath(const std::string& path) {
+bool File::createPath(const std::filesystem::path& path) {
   if (path.empty()) {
     return false;
   }
-  if (base::utils::File::pathExists(path.c_str())) {
+
+  std::error_code ec;
+
+  if (std::filesystem::exists(path, ec)) {
     return true;
   }
-  int status = -1;
 
-  char* currPath = const_cast<char*>(path.c_str());
-  std::string builtPath = std::string();
-#if ELPP_OS_UNIX
-  if (path[0] == '/') {
-    builtPath = "/";
+  if (std::filesystem::create_directories(path, ec)) {
+    return true;
   }
-  currPath = STRTOK(currPath, base::consts::kFilePathSeparator, 0);
-#elif ELPP_OS_WINDOWS
-  // Use secure functions API
-  char* nextTok_ = nullptr;
-  currPath = STRTOK(currPath, base::consts::kFilePathSeparator, &nextTok_);
-  ELPP_UNUSED(nextTok_);
-#endif  // ELPP_OS_UNIX
-  while (currPath != nullptr) {
-    builtPath.append(currPath);
-    builtPath.append(base::consts::kFilePathSeparator);
-#if ELPP_OS_UNIX
-    status = mkdir(builtPath.c_str(), ELPP_LOG_PERMS);
-    currPath = STRTOK(nullptr, base::consts::kFilePathSeparator, 0);
-#elif ELPP_OS_WINDOWS
-    status = _mkdir(builtPath.c_str());
-    currPath = STRTOK(nullptr, base::consts::kFilePathSeparator, &nextTok_);
-#endif  // ELPP_OS_UNIX
-  }
-  if (status == -1) {
-    ELPP_INTERNAL_ERROR("Error while creating path [" << path << "]", true);
-    return false;
-  }
-  return true;
-}
 
-std::string File::extractPathFromFilename(const std::string& fullPath, const char* separator) {
-  if ((fullPath == "") || (fullPath.find(separator) == std::string::npos)) {
-    return fullPath;
-  }
-  std::size_t lastSlashAt = fullPath.find_last_of(separator);
-  if (lastSlashAt == 0) {
-    return std::string(separator);
-  }
-  return fullPath.substr(0, lastSlashAt + 1);
+  ELPP_INTERNAL_ERROR("Error while creating path [" << path << "]", true);
+  return false;
 }
 
 void File::buildStrippedFilename(const char* filename, char buff[], std::size_t limit) {
@@ -1631,8 +1579,8 @@ bool TypedConfigurations::toFile(Level level) {
   return getConfigByVal<bool>(level, &m_toFileMap, "toFile");
 }
 
-const std::string& TypedConfigurations::filename(Level level) {
-  return getConfigByRef<std::string>(level, &m_filenameMap, "filename");
+const std::filesystem::path& TypedConfigurations::filename(Level level) {
+  return getConfigByRef<std::filesystem::path>(level, &m_filenameMap, "filename");
 }
 
 bool TypedConfigurations::toStandardOutput(Level level) {
@@ -1787,13 +1735,14 @@ std::string TypedConfigurations::resolveFilename(const std::string& filename) {
 }
 
 void TypedConfigurations::insertFile(Level level, const std::string& fullFilename) {
-  std::string resolvedFilename = resolveFilename(fullFilename);
+  auto resolvedFilename = std::filesystem::u8path(resolveFilename(fullFilename));
   if (resolvedFilename.empty()) {
     std::cerr << "Could not load empty file for logging, please re-check your configurations for level ["
               << LevelHelper::convertToString(level) << "]";
   }
-  std::string filePath = base::utils::File::extractPathFromFilename(resolvedFilename, base::consts::kFilePathSeparator);
-  if (filePath.size() < resolvedFilename.size()) {
+
+  if (auto filePath = resolvedFilename.parent_path();
+      filePath.native().size() < resolvedFilename.native().size()) {
     base::utils::File::createPath(filePath);
   }
   auto create = [&](Level level) {
@@ -1834,11 +1783,11 @@ bool TypedConfigurations::unsafeValidateFileRolling(Level level, const PreRollOu
   std::size_t maxLogFileSize = unsafeGetConfigByVal(level, &m_maxLogFileSizeMap, "maxLogFileSize");
   std::size_t currFileSize = base::utils::File::getSizeOfFile(fs);
   if (maxLogFileSize != 0 && currFileSize >= maxLogFileSize) {
-    std::string fname = unsafeGetConfigByRef(level, &m_filenameMap, "filename");
+    std::filesystem::path fname = unsafeGetConfigByRef(level, &m_filenameMap, "filename");
     ELPP_INTERNAL_INFO(1, "Truncating log file [" << fname << "] as a result of configurations for level ["
                        << LevelHelper::convertToString(level) << "]");
     fs->close();
-    preRollOutCallback(fname.c_str(), currFileSize);
+    preRollOutCallback(fname, currFileSize);
     fs->open(fname, std::fstream::out | std::fstream::trunc);
     return true;
   }
@@ -2226,10 +2175,10 @@ void Storage::setApplicationArguments(int argc, char** argv) {
 #if defined(ELPP_THREAD_SAFE)
 void LogDispatchCallback::handle(const LogDispatchData* data) {
   base::threading::ScopedLock scopedLock(m_fileLocksMapLock);
-  std::string filename = data->logMessage()->logger()->typedConfigurations()->filename(data->logMessage()->level());
+  const auto &filename = data->logMessage()->logger()->typedConfigurations()->filename(data->logMessage()->level());
   auto lock = m_fileLocks.find(filename);
   if (lock == m_fileLocks.end()) {
-    m_fileLocks.emplace(std::make_pair(filename, std::unique_ptr<base::threading::Mutex>(new base::threading::Mutex)));
+    m_fileLocks.try_emplace(filename, std::make_unique<base::threading::Mutex>());
   }
 }
 #else

@@ -21,33 +21,15 @@ TEST(FileUtilsTest, GetSizeOfFile) {
     EXPECT_EQ(File::getSizeOfFile(fs), strlen(data));
 }
 
-#if !ELPP_OS_EMSCRIPTEN
-// this doesn't work as expected under emscripten's filesystem emulation
-TEST(FileUtilsTest, PathExists) {
-    EXPECT_TRUE(File::pathExists(filename));
-    removeFile(filename);
-    EXPECT_FALSE(File::pathExists(filename));
-}
-#endif
-
-TEST(FileUtilsTest, ExtractPathFromFilename) {
-    EXPECT_EQ("/this/is/path/on/unix/", File::extractPathFromFilename("/this/is/path/on/unix/file.txt"));
-    EXPECT_EQ("C:\\this\\is\\path\\on\\win\\", File::extractPathFromFilename("C:\\this\\is\\path\\on\\win\\file.txt", "\\"));
-}
-
 TEST(FileUtilsTest, CreatePath) {
-    const char* path = "/tmp/my/one/long/path";
-#if !ELPP_OS_EMSCRIPTEN
-    // it'll be reported as existing in emscripten
-    EXPECT_FALSE(File::pathExists(path));
-#endif
-    EXPECT_TRUE(File::createPath(path));
-    EXPECT_TRUE(File::pathExists(path));
-    removeFile(path);
+    std::filesystem::path path = "/tmp/my/one/long/path";
+    EXPECT_FALSE(std::filesystem::exists(path));
 
-#if !ELPP_OS_EMSCRIPTEN
-    EXPECT_FALSE(File::pathExists(path));
-#endif
+	EXPECT_TRUE(File::createPath(path));
+    EXPECT_TRUE(std::filesystem::exists(path));
+    std::filesystem::remove(path);
+
+    EXPECT_FALSE(std::filesystem::exists(path));
 }
 
 

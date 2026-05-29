@@ -382,19 +382,20 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #      endif // defined(ELPP_WINSOCK2)
 #  endif // defined(WIN32_LEAN_AND_MEAN)
 #endif  // ELPP_OS_UNIX
-#include <string>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <set>
-#include <utility>
-#include <functional>
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
-#include <sstream>
+#include <map>
 #include <memory>
+#include <set>
+#include <sstream>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 #if ELPP_THREADING_ENABLED
 #  if ELPP_USE_STD_THREADING
 #      include <mutex>
@@ -806,9 +807,9 @@ const struct {
 static const int kCrashSignalsCount                          =      sizeof(kCrashSignals) / sizeof(kCrashSignals[0]);
 }  // namespace consts
 }  // namespace base
-typedef std::function<void(const char*, std::size_t)> PreRollOutCallback;
+using PreRollOutCallback = std::function<void(const std::filesystem::path &, std::size_t)>;
 namespace base {
-static inline void defaultPreRollOutCallback(const char*, std::size_t) {}
+static inline void defaultPreRollOutCallback(const std::filesystem::path &, std::size_t) {}
 /// @brief Enum to represent timestamp unit
 enum class TimestampUnit : base::type::EnumType {
   Microsecond = 0, Millisecond = 1, Second = 2, Minute = 3, Hour = 4, Day = 5
@@ -1041,21 +1042,14 @@ class File : base::StaticClass {
  public:
   /// @brief Creates new out file stream for specified filename.
   /// @return Pointer to newly created fstream or nullptr
-  static base::type::fstream_t* newFileStream(const std::string& filename);
+  static base::type::fstream_t* newFileStream(const std::filesystem::path& filename);
 
   /// @brief Gets size of file provided in stream
   static std::size_t getSizeOfFile(base::type::fstream_t* fs);
 
-  /// @brief Determines whether or not provided path exist in current file system
-  static bool pathExists(const char* path, bool considerFile = false);
-
   /// @brief Creates specified path on file system
   /// @param path Path to create.
-  static bool createPath(const std::string& path);
-  /// @brief Extracts path of filename with leading slash
-  static std::string extractPathFromFilename(const std::string& fullPath,
-      const char* separator = base::consts::kFilePathSeparator);
-  /// @brief builds stripped filename and puts it in buff
+  static bool createPath(const std::filesystem::path& path);
   static void buildStrippedFilename(const char* filename, char buff[],
                                     std::size_t limit = base::consts::kSourceFilenameMaxLength);
   /// @brief builds base filename and puts it in buff
@@ -1730,7 +1724,7 @@ class Configuration : public Loggable {
 class Configurations : public base::utils::RegistryWithPred<Configuration, Configuration::Predicate> {
  public:
   /// @brief Default constructor with empty repository
-  Configurations(void);
+  Configurations() = default;
 
   /// @brief Constructor used to set configurations using configuration file.
   /// @param configurationFile Full path to configuration file
@@ -1738,7 +1732,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   /// @param base If provided, this configuration will be based off existing repository that this argument is pointing to.
   /// @see parseFromFile(const std::string&, Configurations* base)
   /// @see setRemainingToDefault()
-  Configurations(const std::string& configurationFile, bool useDefaultsForRemaining = true,
+  Configurations(const std::filesystem::path& configurationFile, bool useDefaultsForRemaining = true,
                  Configurations* base = nullptr);
 
   virtual ~Configurations(void) {
@@ -1750,7 +1744,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   ///        existing Configurations to base all the values and then set rest of configuration via configuration file.
   /// @return True if successfully parsed, false otherwise. You may define 'ELPP_DEBUG_ASSERT_FAILURE' to make sure you
   ///         do not proceed without successful parse.
-  bool parseFromFile(const std::string& configurationFile, Configurations* base = nullptr);
+  bool parseFromFile(const std::filesystem::path& configurationFile, Configurations* base = nullptr);
 
   /// @brief Parse configurations from configuration string.
   ///
@@ -1817,7 +1811,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   /// @brief Gets configuration file used in parsing this configurations.
   ///
   /// @detail If this repository was set manually or by text this returns empty string.
-  inline const std::string& configurationFile(void) const {
+  inline const std::filesystem::path& configurationFile(void) const {
     return m_configurationFile;
   }
 
@@ -1846,7 +1840,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
     ///        existing Configurations to base all the values and then set rest of configuration via configuration file.
     /// @return True if successfully parsed, false otherwise. You may define '_STOP_ON_FIRSTELPP_ASSERTION' to make sure you
     ///         do not proceed without successful parse.
-    static bool parseFromFile(const std::string& configurationFile, Configurations* sender,
+    static bool parseFromFile(const std::filesystem::path& configurationFile, Configurations* sender,
                               Configurations* base = nullptr);
 
     /// @brief Parse configurations from configuration string.
@@ -1873,8 +1867,8 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   };
 
  private:
-  std::string m_configurationFile;
-  bool m_isFromFile;
+  std::filesystem::path m_configurationFile;
+  bool m_isFromFile{false};
   friend class el::Loggers;
 
   /// @brief Unsafely sets configuration if does not already exist
@@ -1897,7 +1891,8 @@ typedef std::shared_ptr<base::type::fstream_t> FileStreamPtr;
 
 class LogStreamsReferenceMap : public base::threading::ThreadSafe {
  public:
-  typedef std::unordered_map<std::string, FileStreamPtr> StreamsMap;
+  // Had to use std::map instead of std::unordered_map as MSVC for VS2019 doesn't compile
+  using StreamsMap = std::map<std::filesystem::path, FileStreamPtr>;
 
   StreamsMap& getMap() {
     return m_streams;
@@ -1908,7 +1903,7 @@ class LogStreamsReferenceMap : public base::threading::ThreadSafe {
 };
 
 typedef std::shared_ptr<base::LogStreamsReferenceMap> LogStreamsReferenceMapPtr;
-typedef std::set<std::string> FilenameSet;
+using FilenameSet = std::set<std::filesystem::path>;
 
 /// @brief Configurations with data types.
 ///
@@ -1934,7 +1929,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
 
   bool enabled(Level level);
   bool toFile(Level level);
-  const std::string& filename(Level level);
+  const std::filesystem::path& filename(Level level);
   bool toStandardOutput(Level level);
   const base::LogFormat& logFormat(Level level);
   const base::SubsecondPrecision& subsecondPrecision(Level level = Level::Global);
@@ -1949,7 +1944,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
   Configurations* m_configurations;
   std::unordered_map<Level, bool> m_enabledMap;
   std::unordered_map<Level, bool> m_toFileMap;
-  std::unordered_map<Level, std::string> m_filenameMap;
+  std::unordered_map<Level, std::filesystem::path> m_filenameMap;
   std::unordered_map<Level, bool> m_toStandardOutputMap;
   std::unordered_map<Level, base::LogFormat> m_logFormatMap;
   std::unordered_map<Level, base::SubsecondPrecision> m_subsecondPrecisionMap;
@@ -2199,7 +2194,7 @@ class LogDispatchCallback : public Callback<LogDispatchData> {
   base::threading::Mutex& fileHandle(const LogDispatchData* data);
  private:
   friend class base::LogDispatcher;
-  std::unordered_map<std::string, std::unique_ptr<base::threading::Mutex>> m_fileLocks;
+  std::map<std::filesystem::path, std::unique_ptr<base::threading::Mutex>> m_fileLocks;
   base::threading::Mutex m_fileLocksMapLock;
 };
 class PerformanceTrackingCallback : public Callback<PerformanceTrackingData> {

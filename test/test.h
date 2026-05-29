@@ -95,9 +95,5 @@ static void cleanFile(const char* filename = logfile, el::base::type::fstream_t*
 #undef BUILD_STR
 #define BUILD_STR(strb) [&]() -> std::string { std::stringstream ssb; ssb << strb; return ssb.str(); }()
 
-static void removeFile(const char* path) {
-        (void)(system(BUILD_STR("rm -rf " << path).c_str()) + 1); // (void)(...+1) -> ignore result for gcc 4.6+
-}
-
 static const char* kSysLogIdent = "easylogging++ unit test";
 #endif // TEST_HELPERS_H_

@@ -4,12 +4,6 @@ project(Easyloggingpp CXX)
 
 include(GNUInstallDirs)
 
-macro(require_cpp14)
-    message(STATUS "-- Setting C++14")
-    set(CMAKE_CXX_STANDARD 14)
-    set(CMAKE_CXX_STANDARD_REQUIRED on)
-endmacro()
-
 option(test "Build all tests" OFF)
 option(build_static_lib "Build easyloggingpp as a static library" OFF)
 option(lib_utc_datetime "Build library with UTC date/time logging" OFF)
@@ -41,8 +35,10 @@ if (HAVE_EXECINFO)
 endif()
 
 if (build_static_lib)
-        require_cpp14()
-        add_library(easyloggingpp STATIC src/easylogging++.cc)
+        add_library(easyloggingpp STATIC
+            src/easylogging++.cc
+            src/easylogging++.h
+        )
         set_property(TARGET easyloggingpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 
         if (lib_utc_datetime)
@@ -69,6 +65,8 @@ if (build_static_lib)
             target_compile_definitions(easyloggingpp PUBLIC ELPP_WINSOCK2)
         endif()
 
+        target_compile_features(easyloggingpp PRIVATE cxx_std_17)
+
         target_include_directories(easyloggingpp PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -92,6 +90,8 @@ if (test)
         src/easylogging++.cc
         test/main.cc
     )
+
+    target_compile_features(easyloggingpp-unit-tests PRIVATE cxx_std_17)
 
     target_compile_definitions(easyloggingpp-unit-tests PUBLIC
         ELPP_FEATURE_ALL

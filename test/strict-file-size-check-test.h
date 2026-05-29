@@ -5,7 +5,7 @@
 
 static bool handlerCalled;
 
-void handler(const char*, std::size_t) {
+void handler(const std::filesystem::path &, std::size_t) {
     handlerCalled = true;
 }
 
