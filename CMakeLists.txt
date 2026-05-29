@@ -13,9 +13,9 @@ option(use_std_threads "Use standard library thread synchronization (define ELPP
 option(is_uwp "The compilation platform is uwp." OFF)
 option(use_winsock2 "Use winsock2.h over winsock.h (define ELPP_WINSOCK2)" OFF)
 
-set(ELPP_MAJOR_VERSION "9")
-set(ELPP_MINOR_VERSION "96")
-set(ELPP_PATCH_VERSION "7")
+set(ELPP_MAJOR_VERSION "10")
+set(ELPP_MINOR_VERSION "0")
+set(ELPP_PATCH_VERSION "0")
 set(ELPP_VERSION_STRING "${ELPP_MAJOR_VERSION}.${ELPP_MINOR_VERSION}.${ELPP_PATCH_VERSION}")
 
 install(FILES
@@ -65,6 +65,10 @@ if (build_static_lib)
             target_compile_definitions(easyloggingpp PUBLIC ELPP_WINSOCK2)
         endif()
 
+        target_compile_definitions(easyloggingpp PUBLIC
+            ELPP_VERSION_STRING="${ELPP_VERSION_STRING}"
+        )
+
         target_compile_features(easyloggingpp PRIVATE cxx_std_17)
 
         target_include_directories(easyloggingpp PUBLIC
@@ -94,6 +98,7 @@ if (test)
     target_compile_features(easyloggingpp-unit-tests PRIVATE cxx_std_17)
 
     target_compile_definitions(easyloggingpp-unit-tests PUBLIC
+        ELPP_VERSION_STRING="${ELPP_VERSION_STRING}"
         ELPP_FEATURE_ALL
         ELPP_LOGGING_FLAGS_FROM_ARG
         ELPP_NO_DEFAULT_LOG_FILE
