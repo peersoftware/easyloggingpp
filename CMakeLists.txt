@@ -1,50 +1,38 @@
-cmake_minimum_required(VERSION 2.8.7...3.15)
+cmake_minimum_required(VERSION 3.15)
 
 project(Easyloggingpp CXX)
 
+include(GNUInstallDirs)
+
 macro(require_cpp14)
-        if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 3.0)
-                # CMake 3.1 has built-in CXX standard checks.
-                message(STATUS "-- Setting C++14")
-                set(CMAKE_CXX_STANDARD 14)
-                set(CMAKE_CXX_STANDARD_REQUIRED on)
-        else()
-                if (CMAKE_CXX_COMPILER_ID MATCHES "GCC")
-                    message (STATUS "-- GNU CXX (-std=c++14)")
-                    list(APPEND CMAKE_CXX_FLAGS "-std=c++14")
-                elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-                    message (STATUS "-- CLang CXX (-std=c++14)")
-                    list(APPEND CMAKE_CXX_FLAGS "-std=c++14")
-                else()
-                    message ("-- Easylogging++ requires C++14. Your compiler does not support it.")
-                endif()
-        endif()
+    message(STATUS "-- Setting C++14")
+    set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_STANDARD_REQUIRED on)
 endmacro()
 
 option(test "Build all tests" OFF)
 option(build_static_lib "Build easyloggingpp as a static library" OFF)
 option(lib_utc_datetime "Build library with UTC date/time logging" OFF)
+option(no_default_logfile "Do not write to default log file \"myeasylog.log\" (define ELPP_NO_DEFAULT_LOG_FILE)" OFF)
+option(thread_safe "Build easyloggingpp thread safe (define ELPP_THREAD_SAFE)" OFF)
+option(use_std_threads "Use standard library thread synchronization (define ELPP_FORCE_USE_STD_THREAD)" OFF)
+option(is_uwp "The compilation platform is uwp." OFF)
+option(use_winsock2 "Use winsock2.h over winsock.h (define ELPP_WINSOCK2)" OFF)
 
 set(ELPP_MAJOR_VERSION "9")
 set(ELPP_MINOR_VERSION "96")
 set(ELPP_PATCH_VERSION "7")
 set(ELPP_VERSION_STRING "${ELPP_MAJOR_VERSION}.${ELPP_MINOR_VERSION}.${ELPP_PATCH_VERSION}")
 
-set(ELPP_INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "The directory the headers are installed in")
-set(ELPP_PKGCONFIG_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
 install(FILES
     src/easylogging++.h
-    src/easylogging++.cc
-    DESTINATION "${ELPP_INCLUDE_INSTALL_DIR}"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT dev)
 
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/easyloggingpp.pc.cmakein
     ${CMAKE_CURRENT_BINARY_DIR}/easyloggingpp.pc @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/easyloggingpp.pc DESTINATION "${ELPP_PKGCONFIG_INSTALL_DIR}")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/easyloggingpp.pc DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
 include(CheckIncludeFileCXX)
 check_include_file_cxx("execinfo.h" HAVE_EXECINFO)
@@ -53,17 +41,38 @@ if (HAVE_EXECINFO)
 endif()
 
 if (build_static_lib)
-        if (lib_utc_datetime)
-                add_definitions(-DELPP_UTC_DATETIME)
-        endif()
-
         require_cpp14()
         add_library(easyloggingpp STATIC src/easylogging++.cc)
         set_property(TARGET easyloggingpp PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-        install(TARGETS
-            easyloggingpp
-            ARCHIVE DESTINATION lib)
+        if (lib_utc_datetime)
+            target_compile_definitions(easyloggingpp PUBLIC ELPP_UTC_DATETIME)
+        endif()
+
+        if (no_default_logfile)
+            target_compile_definitions(easyloggingpp PUBLIC ELPP_NO_DEFAULT_LOG_FILE)
+        endif()
+
+        if (thread_safe)
+            target_compile_definitions(easyloggingpp PUBLIC ELPP_THREAD_SAFE)
+        endif()
+
+        if (use_std_threads)
+            target_compile_definitions(easyloggingpp PUBLIC ELPP_FORCE_USE_STD_THREAD)
+        endif()
+
+        if (is_uwp)
+            target_compile_definitions(easyloggingpp PUBLIC WIN32_LEAN_AND_MEAN ELPP_WINSOCK2)
+        endif()
+
+        if (use_winsock2)
+            target_compile_definitions(easyloggingpp PUBLIC ELPP_WINSOCK2)
+        endif()
+
+        target_include_directories(easyloggingpp PUBLIC
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        )
 endif()
 
 export(PACKAGE ${PROJECT_NAME})
@@ -107,3 +116,35 @@ if (test)
 
     add_test(NAME easyloggingppUnitTests COMMAND easyloggingpp-unit-tests -v)
 endif()
+
+set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+install(TARGETS easyloggingpp EXPORT ${TARGETS_EXPORT_NAME})
+
+include(CMakePackageConfigHelpers)
+set(CONFIG_PACKAGE_LOCATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+set(TARGET_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake")
+set(TARGET_VERSION_CONFIG
+	"${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+)
+
+install(EXPORT "${TARGETS_EXPORT_NAME}"
+	NAMESPACE ${PROJECT_NAME}::
+	DESTINATION "${CONFIG_PACKAGE_LOCATION}"
+)
+
+write_basic_package_version_file(
+	"${TARGET_VERSION_CONFIG}"
+	VERSION ${ELPP_VERSION_STRING}
+	COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in"
+	"${TARGET_CONFIG}"
+	INSTALL_DESTINATION "${CONFIG_PACKAGE_LOCATION}"
+)
+
+install(FILES
+	"${TARGET_CONFIG}"
+	"${TARGET_VERSION_CONFIG}"
+	DESTINATION "${CONFIG_PACKAGE_LOCATION}"
+)
