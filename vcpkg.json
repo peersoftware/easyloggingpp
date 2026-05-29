@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "easyloggingpp",
+  "dependencies": [
+    {
+      "name": "gtest",
+      "default-features": false
+    }
+  ],
+  "overrides": [
+    {
+      "name": "gtest",
+      "version": "1.17.0#2"
+    }
+  ],
+  "builtin-baseline": "656be05781442d5c4cb14978f6c7bf47b6e12b32"
+}

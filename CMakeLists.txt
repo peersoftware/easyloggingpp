@@ -80,12 +80,7 @@ export(PACKAGE ${PROJECT_NAME})
 
 ########################################## Unit Testing ###################################
 if (test)
-    # We need C++14 (Google Test requirement)
-    require_cpp14()
-    set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-
-    find_package (GTest REQUIRED)
-    include_directories (${GTEST_INCLUDE_DIRS})
+    find_package(GTest REQUIRED CONFIG)
 
     enable_testing()
 
@@ -108,13 +103,18 @@ if (test)
         ELPP_FORCE_ENV_VAR_FROM_BASH
         ELPP_ENABLE_THREADING
         ELPP_FEATURE_CRASH_LOG
-        ELPP_SYSLOG
     )
 
-    # Standard linking to gtest stuff.
-    target_link_libraries(easyloggingpp-unit-tests ${GTEST_BOTH_LIBRARIES})
+    check_include_file_cxx("syslog.h" HAVE_SYSLOG_H)
+    if (HAVE_SYSLOG_H)
+        target_compile_definitions(easyloggingpp-unit-tests PUBLIC ELPP_SYSLOG)
+    endif()
 
-    add_test(NAME easyloggingppUnitTests COMMAND easyloggingpp-unit-tests -v)
+    # Standard linking to gtest stuff.
+    target_link_libraries(easyloggingpp-unit-tests GTest::gtest_main)
+
+    include(GoogleTest)
+    gtest_discover_tests(easyloggingpp-unit-tests)
 endif()
 
 set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")

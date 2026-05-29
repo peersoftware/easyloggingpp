@@ -23,7 +23,7 @@ TEST(LoggerTest, RegisterHundredLoggers) {
     el::Loggers::reconfigureAllLoggers(el::ConfigurationType::ToStandardOutput, "false");
     // streams should not be more than 10 (this is worse case, otherwise until this point we dont have
     // more than 2 unique loggers registered)
-    EXPECT_LT(ELPP->registeredLoggers()->logStreamsReference()->size(), 10);
+    EXPECT_LT(ELPP->registeredLoggers()->logStreamsReference()->getMap().size(), 10);
 }
 
 TEST(LoggerTest, CheckTenThousandLoggers) {

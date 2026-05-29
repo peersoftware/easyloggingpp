@@ -45,7 +45,8 @@ TEST(ConfigurationsTest, SetForAllLevels) {
 }
 
 TEST(ConfigurationsTest, ParsingFromFile) {
-    std::fstream confFile("/tmp/temp-test.conf", std::fstream::out);
+    const char* file = "/tmp/temp-test.conf";
+    std::fstream confFile(file, std::fstream::out);
     confFile << " * GLOBAL:\n"
     << "    FORMAT               =  %datetime %level %msg\n"
     << "* INFO:\n"
@@ -65,7 +66,7 @@ TEST(ConfigurationsTest, ParsingFromFile) {
     << "    FORMAT               =  %datetime %level [%func] [%loc] %msg\n";
     confFile.close();
 
-    Configurations c("/tmp/temp-test.conf", false, nullptr);
+    Configurations c(file, false, nullptr);
     EXPECT_FALSE(c.hasConfiguration(Level::Debug, ConfigurationType::Enabled));
     EXPECT_FALSE(c.hasConfiguration(Level::Global, ConfigurationType::Enabled));
     EXPECT_TRUE(c.hasConfiguration(Level::Global, ConfigurationType::Format));

@@ -31,8 +31,9 @@ static void reconfigureLoggersForTest(void) {
     c.setGlobally(ConfigurationType::LogFlushThreshold, "1");
     Loggers::setDefaultConfigurations(c, true);
     // We do not want to reconfgure syslog with date/time
+#if defined(ELPP_SYSLOG)
     Loggers::reconfigureLogger(consts::kSysLogLoggerId, ConfigurationType::Format, "%level: %msg");
-
+#endif
     Loggers::addFlag(LoggingFlag::DisableApplicationAbortOnFatalLog);
     Loggers::addFlag(LoggingFlag::ImmediateFlush);
     Loggers::addFlag(LoggingFlag::StrictLogFileSizeCheck);

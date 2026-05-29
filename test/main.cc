@@ -42,5 +42,5 @@ int main(int argc, char** argv) {
     reconfigureLoggersForTest();
     std::cout << "Logs for test are written in [" << logfile << "]" << std::endl;
 
-    return ::testing::UnitTest::GetInstance()->Run();
+    return RUN_ALL_TESTS();
 }
