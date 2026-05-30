@@ -373,7 +373,7 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #   include <sys/time.h>
 #elif ELPP_OS_WINDOWS
 #   include <direct.h>
-#   include <windows.h>
+#   include <Windows.h>
 #  if defined(WIN32_LEAN_AND_MEAN)
 #      if defined(ELPP_WINSOCK2)
 #         include <winsock2.h>
@@ -553,10 +553,10 @@ using PerformanceTrackerPtr = std::unique_ptr<el::base::PerformanceTracker>;
 /// @detail When using this class simply inherit it privately
 class NoCopy {
  protected:
-  NoCopy(void) {}
+  NoCopy(void) = default;
  private:
-  NoCopy(const NoCopy&);
-  NoCopy& operator=(const NoCopy&);
+  NoCopy(const NoCopy&) = delete;
+  NoCopy& operator=(const NoCopy&) = delete;
 };
 /// @brief Internal helper class that makes all default constructors private.
 ///
@@ -565,8 +565,8 @@ class NoCopy {
 class StaticClass {
  private:
   StaticClass(void);
-  StaticClass(const StaticClass&);
-  StaticClass& operator=(const StaticClass&);
+  StaticClass(const StaticClass&) = delete;
+  StaticClass& operator=(const StaticClass&) = delete;
 };
 }  // namespace base
 /// @brief Represents enumeration for severity level used to determine level of logging
@@ -604,7 +604,7 @@ template<> struct hash<el::Level> {
 }
 namespace el {
 /// @brief Static class that contains helper functions for el::Level
-class LevelHelper : base::StaticClass {
+class LevelHelper : private base::StaticClass {
  public:
   /// @brief Represents minimum valid level. Useful when iterating through enum.
   static constexpr auto kMinValid = static_cast<base::type::EnumType>(Level::Trace);
@@ -665,7 +665,7 @@ enum class ConfigurationType : base::type::EnumType {
   Unknown = 1010
 };
 /// @brief Static class that contains helper functions for el::ConfigurationType
-class ConfigurationTypeHelper : base::StaticClass {
+class ConfigurationTypeHelper : private base::StaticClass {
  public:
   /// @brief Represents minimum valid configuration type. Useful when iterating through enum.
   static constexpr auto kMinValid = static_cast<base::type::EnumType>(ConfigurationType::Enabled);
@@ -691,7 +691,7 @@ class ConfigurationTypeHelper : base::StaticClass {
   ///        so this can be used inside function (fn) to represent current configuration type.
   /// @param fn function to apply with each configuration type.
   ///        This bool represent whether or not to stop iterating through configurations.
-  static inline void forEachConfigType(base::type::EnumType* startIndex, const std::function<bool(void)>& fn);
+  static void forEachConfigType(base::type::EnumType* startIndex, const std::function<bool(void)>& fn);
 };
 /// @brief Flags used while writing logs. This flags are set by user
 enum class LoggingFlag : base::type::EnumType {
@@ -844,8 +844,9 @@ class SubsecondPrecision {
   explicit SubsecondPrecision(int width) {
     init(width);
   }
-  bool operator==(const SubsecondPrecision& ssPrec) {
-    return m_width == ssPrec.m_width && m_offset == ssPrec.m_offset;
+
+  friend bool operator==(const SubsecondPrecision &ssPrec, const SubsecondPrecision &other) {
+    return ssPrec.m_width == other.m_width && ssPrec.m_offset == other.m_offset;
   }
   int m_width;
   unsigned int m_offset;
@@ -861,15 +862,15 @@ namespace utils {
 namespace bitwise {
 template <typename Enum>
 static inline base::type::EnumType And(Enum e, base::type::EnumType flag) {
-  return static_cast<base::type::EnumType>(flag) & static_cast<base::type::EnumType>(e);
+  return flag & static_cast<base::type::EnumType>(e);
 }
 template <typename Enum>
 static inline base::type::EnumType Not(Enum e, base::type::EnumType flag) {
-  return static_cast<base::type::EnumType>(flag) & ~(static_cast<base::type::EnumType>(e));
+  return flag & ~(static_cast<base::type::EnumType>(e));
 }
 template <typename Enum>
 static inline base::type::EnumType Or(Enum e, base::type::EnumType flag) {
-  return static_cast<base::type::EnumType>(flag) | static_cast<base::type::EnumType>(e);
+  return flag | static_cast<base::type::EnumType>(e);
 }
 }  // namespace bitwise
 template <typename Enum>
@@ -964,7 +965,7 @@ using Mutex = base::threading::internal::Mutex;
 using ScopedLock = base::threading::internal::ScopedLock<base::threading::Mutex>;
 #  else
 using Mutex = std::recursive_mutex;
-using ScopedLock = std::lock_guard<base::threading::Mutex>;
+using ScopedLock = std::scoped_lock<base::threading::Mutex>;
 #  endif  // !ELPP_USE_STD_THREADING
 #else
 namespace internal {
@@ -1000,8 +1001,8 @@ class ThreadSafe {
   virtual inline void releaseLock(void) const ELPP_FINAL { m_mutex.unlock(); }
   virtual inline base::threading::Mutex& lock(void) const ELPP_FINAL { return m_mutex; }
  protected:
-  ThreadSafe(void) {}
-  virtual ~ThreadSafe(void) {}
+  ThreadSafe(void) = default;
+  virtual ~ThreadSafe(void) = default;
  private:
   mutable base::threading::Mutex m_mutex;
 };
@@ -1031,7 +1032,7 @@ static inline std::string getCurrentThreadId(void) {
 #endif  // ELPP_THREADING_ENABLED
 }  // namespace threading
 namespace utils {
-class File : base::StaticClass {
+class File : private base::StaticClass {
  public:
   /// @brief Creates new out file stream for specified filename.
   /// @return Pointer to newly created fstream or nullptr
@@ -1051,7 +1052,7 @@ class File : base::StaticClass {
                                 std::string_view separator = base::consts::kFilePathSeparator);
 };
 /// @brief String utilities helper class used internally. You should not use it.
-class Str : base::StaticClass {
+class Str : private base::StaticClass {
  public:
   /// @brief Checks if character is digit. Dont use libc implementation of it to prevent locale issues.
   static inline bool isDigit(char c) {
@@ -1119,7 +1120,7 @@ class Str : base::StaticClass {
   static char* wcharPtrToCharPtr(const wchar_t* line);
 };
 /// @brief Operating System helper static class used internally. You should not use it.
-class OS : base::StaticClass {
+class OS : private base::StaticClass {
  public:
 #if ELPP_OS_WINDOWS
   /// @brief Gets environment variables for Windows based OS.
@@ -1161,7 +1162,7 @@ class OS : base::StaticClass {
   static bool termSupportsColor(void);
 };
 /// @brief Contains utilities for cross-platform date/time. This class make use of el::base::utils::Str
-class DateTime : base::StaticClass {
+class DateTime : private base::StaticClass {
  public:
   /// @brief Cross platform gettimeofday for Windows and unix platform. This can be used to determine current microsecond.
   ///
@@ -1234,12 +1235,13 @@ class AbstractRegistry : public base::threading::ThreadSafe {
  public:
   using iterator = typename Container::iterator;
   using const_iterator = typename Container::const_iterator;
+  using type = AbstractRegistry<T_Ptr, Container>;
 
   /// @brief Default constructor
   AbstractRegistry(void) {}
 
   /// @brief Move constructor that is useful for base classes
-  AbstractRegistry(AbstractRegistry&& sr) {
+  AbstractRegistry(AbstractRegistry&& sr) noexcept {
     if (this == &sr) {
       return;
     }
@@ -1247,32 +1249,24 @@ class AbstractRegistry : public base::threading::ThreadSafe {
     m_list = std::move(sr.m_list);
   }
 
-  bool operator==(const AbstractRegistry<T_Ptr, Container>& other) {
-    if (size() != other.size()) {
+  friend bool operator==(const type &reg, const type &other) {
+    if (reg.size() != other.size()) {
       return false;
     }
-    for (std::size_t i = 0; i < m_list.size(); ++i) {
-      if (m_list.at(i) != other.m_list.at(i)) {
+    for (std::size_t i = 0; i < reg.m_list.size(); ++i) {
+      if (reg.m_list.at(i) != other.m_list.at(i)) {
         return false;
       }
     }
     return true;
   }
 
-  bool operator!=(const AbstractRegistry<T_Ptr, Container>& other) {
-    if (size() != other.size()) {
-      return true;
-    }
-    for (std::size_t i = 0; i < m_list.size(); ++i) {
-      if (m_list.at(i) != other.m_list.at(i)) {
-        return true;
-      }
-    }
-    return false;
+  friend bool operator!=(const type &reg, const type &other) {
+      return !(reg == other);
   }
 
   /// @brief Assignment move operator
-  AbstractRegistry& operator=(AbstractRegistry&& sr) {
+  AbstractRegistry& operator=(AbstractRegistry&& sr) noexcept {
     if (this == &sr) {
       return *this;
     }
@@ -1281,7 +1275,7 @@ class AbstractRegistry : public base::threading::ThreadSafe {
     return *this;
   }
 
-  virtual ~AbstractRegistry(void) = default;
+  ~AbstractRegistry(void) override = default;
 
   /// @return Iterator pointer from start of repository
   virtual inline iterator begin(void) ELPP_FINAL {
@@ -1350,7 +1344,7 @@ class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::u
   using iterator = typename Registry<T_Ptr, T_Key>::iterator;
   using const_iterator = typename Registry<T_Ptr, T_Key>::const_iterator;
 
-  Registry(void) {}
+  Registry(void) = default;
 
   /// @brief Copy constructor that is useful for base classes. Try to avoid this constructor, use move constructor.
   Registry(const Registry& sr) : AbstractRegType() {
@@ -1530,7 +1524,7 @@ class Utils {
 /// @detail After inheriting this class publicly, implement pure-virtual function `void log(std::ostream&) const`
 class Loggable {
  public:
-  virtual ~Loggable(void) {}
+  virtual ~Loggable() = default;
   virtual void log(el::base::type::ostream_t&) const = 0;
  private:
   friend inline el::base::type::ostream_t& operator<<(el::base::type::ostream_t& os, const Loggable& loggable) {
@@ -1545,10 +1539,18 @@ class LogFormat : public Loggable {
   LogFormat(void);
   LogFormat(Level level, const base::type::string_t& format);
   LogFormat(const LogFormat& logFormat);
-  LogFormat(LogFormat&& logFormat);
+  LogFormat(LogFormat&& logFormat) noexcept;
   LogFormat& operator=(const LogFormat& logFormat);
-  virtual ~LogFormat(void) {}
-  bool operator==(const LogFormat& other);
+  ~LogFormat(void) override = default;
+
+  friend bool operator==(const LogFormat &format, const LogFormat &other) {
+    return
+      format.m_level == other.m_level &&
+      format.m_userFormat == other.m_userFormat &&
+      format.m_format == other.m_format &&
+      format.m_dateTimeFormat == other.m_dateTimeFormat &&
+      format.m_flags == other.m_flags;
+  }
 
   /// @brief Updates format to be used while logging.
   /// @param userFormat User provided format
@@ -1578,7 +1580,7 @@ class LogFormat : public Loggable {
     return base::utils::hasFlag(flag, m_flags);
   }
 
-  virtual void log(el::base::type::ostream_t& os) const {
+  void log(el::base::type::ostream_t& os) const override {
     os << m_format;
   }
 
@@ -1621,8 +1623,9 @@ class CustomFormatSpecifier {
   inline const FormatSpecifierValueResolver& resolver(void) const {
     return m_resolver;
   }
-  inline bool operator==(const char* formatSpecifier) {
-    return strcmp(m_formatSpecifier, formatSpecifier) == 0;
+
+  friend bool operator==(const CustomFormatSpecifier &format, const char *other) {
+    return strcmp(format.m_formatSpecifier, other) == 0;
   }
 
  private:
@@ -1643,8 +1646,7 @@ class Configuration : public Loggable {
   Configuration(const Configuration& c);
   Configuration& operator=(const Configuration& c);
 
-  virtual ~Configuration(void) {
-  }
+  ~Configuration(void) override = default;
 
   /// @brief Full constructor used to sets value of configuration
   Configuration(Level level, ConfigurationType configurationType, const std::string& value);
@@ -1671,7 +1673,7 @@ class Configuration : public Loggable {
     m_value = value;
   }
 
-  virtual void log(el::base::type::ostream_t& os) const;
+  void log(el::base::type::ostream_t& os) const override;
 
   /// @brief Used to find configuration from configuration (pointers) repository. Avoid using it.
   class Predicate {
@@ -1708,8 +1710,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   explicit Configurations(const std::filesystem::path& configurationFile, bool useDefaultsForRemaining = true,
                  const Configurations* base = nullptr);
 
-  virtual ~Configurations(void) {
-  }
+  ~Configurations(void) override = default;
 
   /// @brief Parses configuration from file.
   /// @param configurationFile Full path to configuration file
@@ -1804,7 +1805,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   ///
   /// @detail This class makes use of base::utils::Str.
   /// You should not need this unless you are working on some tool for Easylogging++
-  class Parser : base::StaticClass {
+  class Parser : private base::StaticClass {
    public:
     /// @brief Parses configuration from file.
     /// @param configurationFile Full path to configuration file
@@ -1893,8 +1894,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
 
   TypedConfigurations(const TypedConfigurations& other);
 
-  virtual ~TypedConfigurations(void) {
-  }
+  ~TypedConfigurations(void) override = default;
 
   const Configurations* configurations(void) const {
     return m_configurations;
@@ -2018,33 +2018,15 @@ class HitCounter {
  public:
   HitCounter(void) :
     m_filename(""),
-    m_lineNumber(0),
-    m_hitCounts(0) {
+    m_lineNumber(0) {
   }
 
   HitCounter(const char* filename, base::type::LineNumber lineNumber) :
     m_filename(filename),
-    m_lineNumber(lineNumber),
-    m_hitCounts(0) {
+    m_lineNumber(lineNumber) {
   }
 
-  HitCounter(const HitCounter& hitCounter) :
-    m_filename(hitCounter.m_filename),
-    m_lineNumber(hitCounter.m_lineNumber),
-    m_hitCounts(hitCounter.m_hitCounts) {
-  }
-
-  HitCounter& operator=(const HitCounter& hitCounter) {
-    if (&hitCounter != this) {
-      m_filename = hitCounter.m_filename;
-      m_lineNumber = hitCounter.m_lineNumber;
-      m_hitCounts = hitCounter.m_hitCounts;
-    }
-    return *this;
-  }
-
-  virtual ~HitCounter(void) {
-  }
+  virtual ~HitCounter(void) = default;
 
   /// @brief Resets location of current hit counter
   inline void resetLocation(const char* filename, base::type::LineNumber lineNumber) {
@@ -2096,7 +2078,7 @@ class HitCounter {
  private:
   const char* m_filename;
   base::type::LineNumber m_lineNumber;
-  std::size_t m_hitCounts;
+  std::size_t m_hitCounts{0};
 };
 /// @brief Repository for hit counters used across the application
 class RegisteredHitCounters : public base::utils::RegistryWithPred<base::HitCounter, base::HitCounter::Predicate> {
@@ -2127,7 +2109,7 @@ enum class DispatchAction : base::type::EnumType {
 template <typename T>
 class Callback : protected base::threading::ThreadSafe {
  public:
-  Callback(void) : m_enabled(true) {}
+  Callback(void) = default;
   inline bool enabled(void) const {
     return m_enabled;
   }
@@ -2138,11 +2120,11 @@ class Callback : protected base::threading::ThreadSafe {
  protected:
   virtual void handle(const T* handlePtr) = 0;
  private:
-  bool m_enabled;
+  bool m_enabled{true};
 };
 class LogDispatchData {
  public:
-  LogDispatchData() : m_logMessage(nullptr), m_dispatchAction(base::DispatchAction::None) {}
+  LogDispatchData() = default;
   inline const LogMessage* logMessage(void) const {
     return m_logMessage;
   }
@@ -2156,14 +2138,14 @@ class LogDispatchData {
     m_dispatchAction = dispatchAction;
   }
  private:
-  LogMessage* m_logMessage;
-  base::DispatchAction m_dispatchAction;
+  LogMessage* m_logMessage{nullptr};
+  base::DispatchAction m_dispatchAction{base::DispatchAction::None};
   friend class base::LogDispatcher;
 
 };
 class LogDispatchCallback : public Callback<LogDispatchData> {
  protected:
-  virtual void handle(const LogDispatchData* data);
+  void handle(const LogDispatchData* data) override;
   base::threading::Mutex& fileHandle(const LogDispatchData* data);
  private:
   friend class base::LogDispatcher;
@@ -2178,16 +2160,16 @@ class LoggerRegistrationCallback : public Callback<Logger> {
  private:
   friend class base::RegisteredLoggers;
 };
-class LogBuilder : base::NoCopy {
+class LogBuilder : private base::NoCopy {
  public:
-  LogBuilder() : m_termSupportsColor(base::utils::OS::termSupportsColor()) {}
+  LogBuilder() = default;
   virtual ~LogBuilder(void) {
     ELPP_INTERNAL_INFO(3, "Destroying log builder...")
   }
   virtual base::type::string_t build(const LogMessage* logMessage, bool appendNewLine) const = 0;
   void convertToColoredOutput(base::type::string_t* logLine, Level level) const;
  private:
-  bool m_termSupportsColor;
+  bool m_termSupportsColor{base::utils::OS::termSupportsColor()};
   friend class el::base::DefaultLogDispatchCallback;
 };
 using LogBuilderPtr = std::shared_ptr<LogBuilder>;
@@ -2202,7 +2184,7 @@ class Logger : public base::threading::ThreadSafe, public Loggable {
   Logger& operator=(const Logger& logger);
   ~Logger(void) override = default;
 
-  virtual inline void log(el::base::type::ostream_t& os) const {
+  inline void log(el::base::type::ostream_t& os) const override {
     os << m_id.c_str();
   }
 
@@ -2263,10 +2245,10 @@ template <typename T>\
 inline void FUNCTION_NAME(const T&);
 
   template <typename T, typename... Args>
-  inline void verbose(int, const char*, const T&, const Args&...);
+  void verbose(int, const char*, const T&, const Args&...);
 
   template <typename T>
-  inline void verbose(int, const T&);
+  void verbose(int, const T&);
 
   LOGGER_LEVEL_WRITERS_SIGNATURES(info)
   LOGGER_LEVEL_WRITERS_SIGNATURES(debug)
@@ -2299,20 +2281,20 @@ inline void FUNCTION_NAME(const T&);
   friend class el::base::PerformanceTracker;
   friend class el::base::LogDispatcher;
 
-  Logger(void);
+  Logger(void) = default;
 
 #if ELPP_VARIADIC_TEMPLATES_SUPPORTED
   template <typename T, typename... Args>
   void log_(Level, int, const char*, const T&, const Args&...);
 
   template <typename T>
-  inline void log_(Level, int, const T&);
+  void log_(Level, int, const T&);
 
   template <typename T, typename... Args>
   void log(Level, const char*, const T&, const Args&...);
 
   template <typename T>
-  inline void log(Level, const T&);
+  void log(Level, const T&);
 #endif // ELPP_VARIADIC_TEMPLATES_SUPPORTED
 
   void initUnflushedCount(void);
@@ -2335,7 +2317,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
 
   inline void setDefaultConfigurations(const Configurations& configurations) {
     base::threading::ScopedLock scopedLock(lock());
-    m_defaultConfigurations.setFromBase(const_cast<Configurations*>(&configurations));
+    m_defaultConfigurations.setFromBase(&configurations);
   }
 
   inline Configurations* defaultConfigurations(void) {
@@ -2393,7 +2375,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
   void unsafeFlushAll(void);
 };
 /// @brief Represents registries for verbose logging
-class VRegistry : base::NoCopy, public base::threading::ThreadSafe {
+class VRegistry : private base::NoCopy, public base::threading::ThreadSafe {
  public:
   explicit VRegistry(base::type::VerboseLevel level, base::type::EnumType* pFlags);
 
@@ -2527,7 +2509,7 @@ class IWorker {
 };
 #endif // ELPP_ASYNC_LOGGING
 /// @brief Easylogging++ management storage
-class Storage : base::NoCopy, public base::threading::ThreadSafe {
+class Storage : private base::NoCopy, public base::threading::ThreadSafe {
  public:
 #if ELPP_ASYNC_LOGGING
   Storage(const LogBuilderPtr& defaultLogBuilder, std::unique_ptr<base::IWorker>&& asyncDispatchWorker);
@@ -2535,7 +2517,7 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
   explicit Storage(const LogBuilderPtr& defaultLogBuilder);
 #endif  // ELPP_ASYNC_LOGGING
 
-  virtual ~Storage(void);
+  ~Storage(void) override;
 
   inline bool validateEveryNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t occasion) const {
     return hitCounters()->validateEveryN(filename, lineNumber, occasion);
@@ -2700,15 +2682,15 @@ extern ELPP_EXPORT base::type::StoragePointer elStorage;
 #define ELPP el::base::elStorage
 class DefaultLogDispatchCallback : public LogDispatchCallback {
  protected:
-  void handle(const LogDispatchData* data);
+  void handle(const LogDispatchData* data) override;
  private:
-  const LogDispatchData* m_data;
+  const LogDispatchData* m_data{nullptr};
   void dispatch(base::type::string_t&& logLine);
 };
 #if ELPP_ASYNC_LOGGING
 class AsyncLogDispatchCallback : public LogDispatchCallback {
  protected:
-  void handle(const LogDispatchData* data);
+  void handle(const LogDispatchData* data) override;
 };
 class AsyncDispatchWorker : public base::IWorker, public base::threading::ThreadSafe {
  public:
@@ -2739,10 +2721,10 @@ class AsyncDispatchWorker : public base::IWorker, public base::threading::Thread
 namespace base {
 class DefaultLogBuilder : public LogBuilder {
  public:
-  base::type::string_t build(const LogMessage* logMessage, bool appendNewLine) const;
+  base::type::string_t build(const LogMessage* logMessage, bool appendNewLine) const override;
 };
 /// @brief Dispatches log messages
-class LogDispatcher : base::NoCopy {
+class LogDispatcher : private base::NoCopy {
  public:
   LogDispatcher(bool proceed, LogMessage* logMessage, base::DispatchAction dispatchAction) :
     m_proceed(proceed),
@@ -2836,7 +2818,7 @@ class IterableStack : public IterableContainer<T, Container>, public std::stack<
 // Log message builder
 class MessageBuilder {
  public:
-  MessageBuilder(void) : m_logger(nullptr), m_containerLogSeparator(ELPP_LITERAL("")) {}
+  MessageBuilder(void) = default;
   void initialize(Logger* logger);
 
 #  define ELPP_SIMPLE_LOG(LOG_TYPE)\
@@ -3131,8 +3113,8 @@ ELPP_LITERAL("(") << elem->first << ELPP_LITERAL(", ") << elem->second << ELPP_L
 #undef ELPP_ITERATOR_CONTAINER_LOG_FOUR_ARG
 #undef ELPP_ITERATOR_CONTAINER_LOG_FIVE_ARG
  private:
-  Logger* m_logger;
-  const base::type::char_t* m_containerLogSeparator;
+  Logger* m_logger{nullptr};
+  const base::type::char_t* m_containerLogSeparator{ELPP_LITERAL("")};
 
   template<class Iterator>
   MessageBuilder& writeIterator(Iterator begin_, Iterator end_, std::size_t size_) {
@@ -3152,9 +3134,9 @@ ELPP_LITERAL("(") << elem->first << ELPP_LITERAL(", ") << elem->second << ELPP_L
   }
 };
 /// @brief Writes nothing - Used when certain log is disabled
-class NullWriter : base::NoCopy {
+class NullWriter : private base::NoCopy {
  public:
-  NullWriter(void) {}
+  NullWriter(void) = default;
 
   // Null manipulator
   inline NullWriter& operator<<(std::ostream& (*)(std::ostream&)) {
@@ -3171,18 +3153,19 @@ class NullWriter : base::NoCopy {
   }
 };
 /// @brief Main entry point of each logging
-class Writer : base::NoCopy {
+class Writer : private base::NoCopy {
  public:
   Writer(Level level, const char* file, base::type::LineNumber line,
          const char* func, base::DispatchAction dispatchAction = base::DispatchAction::NormalLog,
          base::type::VerboseLevel verboseLevel = 0) :
-    m_msg(nullptr), m_level(level), m_file(file), m_line(line), m_func(func), m_verboseLevel(verboseLevel),
-    m_logger(nullptr), m_proceed(false), m_dispatchAction(dispatchAction) {
+    m_level(level), m_file(file), m_line(line), m_func(func), m_verboseLevel(verboseLevel),
+    m_dispatchAction(dispatchAction) {
   }
 
-  Writer(LogMessage* msg, base::DispatchAction dispatchAction = base::DispatchAction::NormalLog) :
+  explicit Writer(LogMessage* msg,
+         base::DispatchAction dispatchAction = base::DispatchAction::NormalLog) :
     m_msg(msg), m_level(msg != nullptr ? msg->level() : Level::Unknown),
-    m_line(0), m_logger(nullptr), m_proceed(false), m_dispatchAction(dispatchAction) {
+    m_dispatchAction(dispatchAction) {
   }
 
   virtual ~Writer(void) {
@@ -3222,14 +3205,14 @@ class Writer : base::NoCopy {
   Writer& construct(int, std::vector<std::string>&& loggerIds);
   Writer& construct(int count, const char* loggerIds, ...);
  protected:
-  LogMessage* m_msg;
+  LogMessage* m_msg{nullptr};
   Level m_level;
-  const char* m_file;
-  const base::type::LineNumber m_line;
-  const char* m_func;
-  base::type::VerboseLevel m_verboseLevel;
-  Logger* m_logger;
-  bool m_proceed;
+  const char* m_file{nullptr};
+  const base::type::LineNumber m_line{0};
+  const char* m_func{nullptr};
+  base::type::VerboseLevel m_verboseLevel{0};
+  Logger* m_logger{nullptr};
+  bool m_proceed{false};
   base::MessageBuilder m_messageBuilder;
   base::DispatchAction m_dispatchAction;
   std::vector<std::string> m_loggerIds;
@@ -3241,13 +3224,9 @@ class Writer : base::NoCopy {
 };
 class PErrorWriter : public base::Writer {
  public:
-  PErrorWriter(Level level, const char* file, base::type::LineNumber line,
-               const char* func, base::DispatchAction dispatchAction = base::DispatchAction::NormalLog,
-               base::type::VerboseLevel verboseLevel = 0) :
-    base::Writer(level, file, line, func, dispatchAction, verboseLevel) {
-  }
+  using Writer::Writer;
 
-  virtual ~PErrorWriter(void);
+  ~PErrorWriter(void) override;
 };
 }  // namespace base
 // Logging from Logger class. Why this is here? Because we have Storage and Writer class available
@@ -3623,7 +3602,7 @@ el::base::type::ostream_t& operator<<(el::base::type::ostream_t& OutputStreamIns
 /// @brief Initializes syslog with process ID, options and facility. calls closelog() on d'tor
 class SysLogInitializer {
  public:
-  SysLogInitializer(const char* processIdent, int options = 0, int facility = 0) {
+  explicit SysLogInitializer(const char* processIdent, int options = 0, int facility = 0) {
 #if defined(ELPP_SYSLOG)
     (void)base::consts::kSysLogLoggerId;
     openlog(processIdent, options, facility);
@@ -3641,7 +3620,7 @@ class SysLogInitializer {
 };
 #define ELPP_INITIALIZE_SYSLOG(id, opt, fac) el::SysLogInitializer elSyslogInit(id, opt, fac)
 /// @brief Static helpers for developers
-class Helpers : base::StaticClass {
+class Helpers : private base::StaticClass {
  public:
   /// @brief Shares logging repository (base::Storage)
   static inline void setStorage(base::type::StoragePointer storage) {
@@ -3766,7 +3745,7 @@ class Helpers : base::StaticClass {
   }
 };
 /// @brief Static helpers to deal with loggers and their configurations
-class Loggers : base::StaticClass {
+class Loggers : private base::StaticClass {
  public:
   /// @brief Gets existing or registers new logger
   static Logger* getLogger(const std::string& identity, bool registerIfNotAvailable = true);
@@ -3843,7 +3822,7 @@ class Loggers : base::StaticClass {
   /// @brief Adds flag and removes it when scope goes out
   class ScopedAddFlag {
    public:
-    ScopedAddFlag(LoggingFlag flag) : m_flag(flag) {
+    explicit ScopedAddFlag(LoggingFlag flag) : m_flag(flag) {
       Loggers::addFlag(m_flag);
     }
     ~ScopedAddFlag(void) {
@@ -3855,7 +3834,7 @@ class Loggers : base::StaticClass {
   /// @brief Removes flag and add it when scope goes out
   class ScopedRemoveFlag {
    public:
-    ScopedRemoveFlag(LoggingFlag flag) : m_flag(flag) {
+    explicit ScopedRemoveFlag(LoggingFlag flag) : m_flag(flag) {
       Loggers::removeFlag(m_flag);
     }
     ~ScopedRemoveFlag(void) {
@@ -3877,7 +3856,7 @@ class Loggers : base::StaticClass {
   /// @brief Clears vmodules
   static void clearVModules(void);
 };
-class VersionInfo : base::StaticClass {
+class VersionInfo : private base::StaticClass {
  public:
   /// @brief Current version number
   static std::string_view version(void);
