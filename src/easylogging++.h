@@ -12,10 +12,6 @@
 
 #ifndef EASYLOGGINGPP_H
 #define EASYLOGGINGPP_H
-// Compilers and C++0x/C++11 Evaluation
-#if __cplusplus >= 201103L
-#  define ELPP_CXX11 1
-#endif  // __cplusplus >= 201103L
 #if (defined(__GNUC__))
 #  define ELPP_COMPILER_GCC 1
 #else
@@ -25,9 +21,6 @@
 #    define ELPP_GCC_VERSION (__GNUC__ * 10000 \
 + __GNUC_MINOR__ * 100 \
 + __GNUC_PATCHLEVEL__)
-#  if defined(__GXX_EXPERIMENTAL_CXX0X__)
-#    define ELPP_CXX0X 1
-#  endif
 #endif
 // Visual C++
 #if defined(_MSC_VER)
@@ -36,13 +29,6 @@
 #  define ELPP_COMPILER_MSVC 0
 #endif
 #define ELPP_CRT_DBG_WARNINGS ELPP_COMPILER_MSVC
-#if ELPP_COMPILER_MSVC
-#  if (_MSC_VER == 1600)
-#    define ELPP_CXX0X 1
-#  elif(_MSC_VER >= 1700)
-#    define ELPP_CXX11 1
-#  endif
-#endif
 // Clang++
 #if (defined(__clang__) && (__clang__ == 1))
 #  define ELPP_COMPILER_CLANG 1
@@ -255,7 +241,7 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #  define ELPP_USE_STD_THREADING 0
 #else
 #  if ((ELPP_COMPILER_CLANG && defined(ELPP_CLANG_SUPPORTS_THREAD)) || \
-       (!ELPP_COMPILER_CLANG && defined(ELPP_CXX11)) || \
+       !ELPP_COMPILER_CLANG || \
        defined(ELPP_FORCE_USE_STD_THREAD))
 #    define ELPP_USE_STD_THREADING 1
 #  else
@@ -340,9 +326,6 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #else
 #  define ELPP_VERBOSE_LOG 0
 #endif  // (!defined(ELPP_DISABLE_VERBOSE_LOGS) && (ELPP_LOGGING_ENABLED))
-#if (!(ELPP_CXX0X || ELPP_CXX11))
-#   error "C++0x (or higher) support not detected! (Is `-std=c++11' missing?)"
-#endif  // (!(ELPP_CXX0X || ELPP_CXX11))
 // Headers
 #if defined(ELPP_SYSLOG)
 #   include <syslog.h>
