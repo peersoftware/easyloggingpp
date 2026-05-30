@@ -61,11 +61,6 @@ TEST(StringUtilsTest, CStringCaseEq) {
     EXPECT_FALSE(Str::cStringCaseEq(nullptr, "nope"));
 }
 
-TEST(StringUtilsTest, Contains) {
-    EXPECT_TRUE(Str::contains("the quick brown fox jumped over the lazy dog", 'a'));
-    EXPECT_FALSE(Str::contains("the quick brown fox jumped over the lazy dog", '9'));
-}
-
 TEST(StringUtilsTest, ReplaceFirstWithEscape) {
     el::base::type::string_t str = ELPP_LITERAL("Rolling in the deep");
     Str::replaceFirstWithEscape(str, ELPP_LITERAL("Rolling"), ELPP_LITERAL("Swimming"));
@@ -90,6 +85,17 @@ TEST(StringUtilsTest, AddToBuff) {
     EXPECT_STREQ("The quick brown fox", buf);
     buffPtr = Str::addToBuff(" jumps over the lazy dog", buffPtr, bufLim);
     EXPECT_STREQ("The quick brown fox jumps over the lazy dog", buf);
+}
+
+TEST(StringUtilsTest, AddToBuffLimit) {
+    char buf[10];
+    char* bufLim = buf + 10;
+    char* buffPtr = buf;
+
+    buffPtr = Str::addToBuff("The quick brown fox", buffPtr, bufLim);
+    EXPECT_STREQ("The quick", buf);
+    buffPtr = Str::addToBuff(" jumps over the lazy dog", buffPtr, bufLim);
+    EXPECT_STREQ("The quick", buf);
 }
 
 TEST(StringUtilsTest, ConvertAndAddToBuff) {

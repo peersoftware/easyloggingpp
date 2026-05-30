@@ -25,86 +25,90 @@ namespace consts {
 
 // Level log values - These are values that are replaced in place of %level format specifier
 // Extra spaces after format specifiers are only for readability purposes in log files
-static const base::type::char_t* kInfoLevelLogValue     =   ELPP_LITERAL("INFO");
-static const base::type::char_t* kDebugLevelLogValue    =   ELPP_LITERAL("DEBUG");
-static const base::type::char_t* kWarningLevelLogValue  =   ELPP_LITERAL("WARNING");
-static const base::type::char_t* kErrorLevelLogValue    =   ELPP_LITERAL("ERROR");
-static const base::type::char_t* kFatalLevelLogValue    =   ELPP_LITERAL("FATAL");
-static const base::type::char_t* kVerboseLevelLogValue  =
+static constexpr base::type::string_view_t kInfoLevelLogValue     =   ELPP_LITERAL("INFO");
+static constexpr base::type::string_view_t kDebugLevelLogValue    =   ELPP_LITERAL("DEBUG");
+static constexpr base::type::string_view_t kWarningLevelLogValue  =   ELPP_LITERAL("WARNING");
+static constexpr base::type::string_view_t kErrorLevelLogValue    =   ELPP_LITERAL("ERROR");
+static constexpr base::type::string_view_t kFatalLevelLogValue    =   ELPP_LITERAL("FATAL");
+static constexpr base::type::string_view_t kVerboseLevelLogValue  =
   ELPP_LITERAL("VERBOSE"); // will become VERBOSE-x where x = verbose level
-static const base::type::char_t* kTraceLevelLogValue    =   ELPP_LITERAL("TRACE");
-static const base::type::char_t* kInfoLevelShortLogValue     =   ELPP_LITERAL("I");
-static const base::type::char_t* kDebugLevelShortLogValue    =   ELPP_LITERAL("D");
-static const base::type::char_t* kWarningLevelShortLogValue  =   ELPP_LITERAL("W");
-static const base::type::char_t* kErrorLevelShortLogValue    =   ELPP_LITERAL("E");
-static const base::type::char_t* kFatalLevelShortLogValue    =   ELPP_LITERAL("F");
-static const base::type::char_t* kVerboseLevelShortLogValue  =   ELPP_LITERAL("V");
-static const base::type::char_t* kTraceLevelShortLogValue    =   ELPP_LITERAL("T");
+static constexpr base::type::string_view_t kTraceLevelLogValue    =   ELPP_LITERAL("TRACE");
+static constexpr base::type::string_view_t kInfoLevelShortLogValue     =   ELPP_LITERAL("I");
+static constexpr base::type::string_view_t kDebugLevelShortLogValue    =   ELPP_LITERAL("D");
+static constexpr base::type::string_view_t kWarningLevelShortLogValue  =   ELPP_LITERAL("W");
+static constexpr base::type::string_view_t kErrorLevelShortLogValue    =   ELPP_LITERAL("E");
+static constexpr base::type::string_view_t kFatalLevelShortLogValue    =   ELPP_LITERAL("F");
+static constexpr base::type::string_view_t kVerboseLevelShortLogValue  =   ELPP_LITERAL("V");
+static constexpr base::type::string_view_t kTraceLevelShortLogValue    =   ELPP_LITERAL("T");
 // Format specifiers - These are used to define log format
-static const base::type::char_t* kAppNameFormatSpecifier          =      ELPP_LITERAL("%app");
-static const base::type::char_t* kLoggerIdFormatSpecifier         =      ELPP_LITERAL("%logger");
-static const base::type::char_t* kThreadIdFormatSpecifier         =      ELPP_LITERAL("%thread");
-static const base::type::char_t* kSeverityLevelFormatSpecifier    =      ELPP_LITERAL("%level");
-static const base::type::char_t* kSeverityLevelShortFormatSpecifier    =      ELPP_LITERAL("%levshort");
-static const base::type::char_t* kDateTimeFormatSpecifier         =      ELPP_LITERAL("%datetime");
-static const base::type::char_t* kLogFileFormatSpecifier          =      ELPP_LITERAL("%file");
-static const base::type::char_t* kLogFileBaseFormatSpecifier      =      ELPP_LITERAL("%fbase");
-static const base::type::char_t* kLogLineFormatSpecifier          =      ELPP_LITERAL("%line");
-static const base::type::char_t* kLogLocationFormatSpecifier      =      ELPP_LITERAL("%loc");
-static const base::type::char_t* kLogFunctionFormatSpecifier      =      ELPP_LITERAL("%func");
-static const base::type::char_t* kCurrentUserFormatSpecifier      =      ELPP_LITERAL("%user");
-static const base::type::char_t* kCurrentHostFormatSpecifier      =      ELPP_LITERAL("%host");
-static const base::type::char_t* kMessageFormatSpecifier          =      ELPP_LITERAL("%msg");
-static const base::type::char_t* kVerboseLevelFormatSpecifier     =      ELPP_LITERAL("%vlevel");
-static const char* kDateTimeFormatSpecifierForFilename            =      "%datetime";
+static constexpr base::type::string_view_t kAppNameFormatSpecifier          =      ELPP_LITERAL("%app");
+static constexpr base::type::string_view_t kLoggerIdFormatSpecifier         =      ELPP_LITERAL("%logger");
+static constexpr base::type::string_view_t kThreadIdFormatSpecifier         =      ELPP_LITERAL("%thread");
+static constexpr base::type::string_view_t kSeverityLevelFormatSpecifier    =      ELPP_LITERAL("%level");
+static constexpr base::type::string_view_t kSeverityLevelShortFormatSpecifier    =      ELPP_LITERAL("%levshort");
+static constexpr base::type::string_view_t kDateTimeFormatSpecifier         =      ELPP_LITERAL("%datetime");
+static constexpr base::type::string_view_t kLogFileFormatSpecifier          =      ELPP_LITERAL("%file");
+static constexpr base::type::string_view_t kLogFileBaseFormatSpecifier      =      ELPP_LITERAL("%fbase");
+static constexpr base::type::string_view_t kLogLineFormatSpecifier          =      ELPP_LITERAL("%line");
+static constexpr base::type::string_view_t kLogLocationFormatSpecifier      =      ELPP_LITERAL("%loc");
+static constexpr base::type::string_view_t kLogFunctionFormatSpecifier      =      ELPP_LITERAL("%func");
+static constexpr base::type::string_view_t kCurrentUserFormatSpecifier      =      ELPP_LITERAL("%user");
+static constexpr base::type::string_view_t kCurrentHostFormatSpecifier      =      ELPP_LITERAL("%host");
+static constexpr base::type::string_view_t kMessageFormatSpecifier          =      ELPP_LITERAL("%msg");
+static constexpr base::type::string_view_t kVerboseLevelFormatSpecifier     =      ELPP_LITERAL("%vlevel");
+static constexpr std::string_view kDateTimeFormatSpecifierForFilename            =      "%datetime";
 // Date/time
-static const char* kDays[7]                         =      { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-static const char* kDaysAbbrev[7]                   =      { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-static const char* kMonths[12]                      =      { "January", "February", "March", "April", "May", "June", "July", "August",
-                                                             "September", "October", "November", "December"
-                                                           };
-static const char* kMonthsAbbrev[12]                =      { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-static const char* kDefaultDateTimeFormat           =      "%Y-%M-%d %H:%m:%s,%g";
-static const char* kDefaultDateTimeFormatInFilename =      "%Y-%M-%d_%H-%m";
-static const int kYearBase                          =      1900;
-static const char* kAm                              =      "AM";
-static const char* kPm                              =      "PM";
+static constexpr std::array<std::string_view, 7> kDays{
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+};
+static constexpr std::array<std::string_view, 7> kDaysAbbrev{
+  "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+};
+static constexpr std::array<std::string_view, 12> kMonths{
+  "January", "February", "March", "April", "May", "June", "July", "August",
+  "September", "October", "November", "December"
+};
+static constexpr std::array<std::string_view, 12> kMonthsAbbrev{
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+static constexpr std::string_view  kDefaultDateTimeFormat           =      "%Y-%M-%d %H:%m:%s,%g";
+static constexpr std::string_view  kDefaultDateTimeFormatInFilename =      "%Y-%M-%d_%H-%m";
+static constexpr int kYearBase                          =      1900;
+static constexpr std::string_view  kAm                              =      "AM";
+static constexpr std::string_view  kPm                              =      "PM";
 // Miscellaneous constants
-
-static const char* kNullPointer                            =      "nullptr";
-#if ELPP_VARIADIC_TEMPLATES_SUPPORTED
-#endif  // ELPP_VARIADIC_TEMPLATES_SUPPORTED
-static const base::type::VerboseLevel kMaxVerboseLevel     =      9;
-static const char* kUnknownUser                            =      "unknown-user";
-static const char* kUnknownHost                            =      "unknown-host";
+static constexpr std::string_view kNullPointer                            =      "nullptr";
+static constexpr base::type::VerboseLevel kMaxVerboseLevel     =      9;
+static constexpr std::string_view kUnknownUser                            =      "unknown-user";
+static constexpr std::string_view kUnknownHost                            =      "unknown-host";
 
 
 //---------------- DEFAULT LOG FILE -----------------------
 
 #if defined(ELPP_NO_DEFAULT_LOG_FILE)
 #  if ELPP_OS_UNIX
-static const char* kDefaultLogFile                         =      "/dev/null";
+static constexpr std::string_view kDefaultLogFile                         =      "/dev/null";
 #  elif ELPP_OS_WINDOWS
-static const char* kDefaultLogFile                         =      "nul";
+static constexpr std::string_view kDefaultLogFile                         =      "nul";
 #  endif  // ELPP_OS_UNIX
 #elif defined(ELPP_DEFAULT_LOG_FILE)
-static const char* kDefaultLogFile                         =      ELPP_DEFAULT_LOG_FILE;
+static constexpr std::string_view kDefaultLogFile                         =      ELPP_DEFAULT_LOG_FILE;
 #else
-static const char* kDefaultLogFile                         =      "myeasylog.log";
+static constexpr std::string_view kDefaultLogFile                         =      "myeasylog.log";
 #endif // defined(ELPP_NO_DEFAULT_LOG_FILE)
 
 
 #if !defined(ELPP_DISABLE_LOG_FILE_FROM_ARG)
-static const char* kDefaultLogFileParam                    =      "--default-log-file";
+static constexpr auto* kDefaultLogFileParam                    =      "--default-log-file";
 #endif  // !defined(ELPP_DISABLE_LOG_FILE_FROM_ARG)
 #if defined(ELPP_LOGGING_FLAGS_FROM_ARG)
-static const char* kLoggingFlagsParam                      =      "--logging-flags";
+static constexpr auto* kLoggingFlagsParam                      =      "--logging-flags";
 #endif  // defined(ELPP_LOGGING_FLAGS_FROM_ARG)
-static const char* kValidLoggerIdSymbols                   =
+static constexpr std::string_view kValidLoggerIdSymbols                   =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._";
-static const char* kConfigurationComment                   =      "##";
-static const char* kConfigurationLevel                     =      "*";
-static const char* kConfigurationLoggerId                  =      "--";
+static constexpr std::string_view kConfigurationComment                   =      "##";
+static constexpr std::string_view kConfigurationLevel                     =      "*";
+static constexpr std::string_view kConfigurationLoggerId                  =      "--";
 }
 // el::base::utils
 namespace utils {
@@ -147,7 +151,7 @@ struct StringToLevelItem {
   Level level;
 };
 
-static struct StringToLevelItem stringToLevelMap[] = {
+static constexpr std::array<struct StringToLevelItem, 8> stringToLevelMap{{
   { "global", Level::Global },
   { "debug", Level::Debug },
   { "info", Level::Info },
@@ -156,10 +160,10 @@ static struct StringToLevelItem stringToLevelMap[] = {
   { "fatal", Level::Fatal },
   { "verbose", Level::Verbose },
   { "trace", Level::Trace }
-};
+}};
 
 Level LevelHelper::convertFromString(const char* levelStr) {
-  for (auto& item : stringToLevelMap) {
+  for (const auto& item : stringToLevelMap) {
     if (base::utils::Str::cStringCaseEq(levelStr, item.levelString)) {
       return item.level;
     }
@@ -198,7 +202,7 @@ struct ConfigurationStringToTypeItem {
   ConfigurationType configType;
 };
 
-static struct ConfigurationStringToTypeItem configStringToTypeMap[] = {
+static constexpr std::array<struct ConfigurationStringToTypeItem, 10> configStringToTypeMap{{
   { "enabled", ConfigurationType::Enabled },
   { "to_file", ConfigurationType::ToFile },
   { "to_standard_output", ConfigurationType::ToStandardOutput },
@@ -209,10 +213,10 @@ static struct ConfigurationStringToTypeItem configStringToTypeMap[] = {
   { "performance_tracking", ConfigurationType::PerformanceTracking },
   { "max_log_file_size", ConfigurationType::MaxLogFileSize },
   { "log_flush_threshold", ConfigurationType::LogFlushThreshold },
-};
+}};
 
 ConfigurationType ConfigurationTypeHelper::convertFromString(const char* configStr) {
-  for (auto& item : configStringToTypeMap) {
+  for (const auto& item : configStringToTypeMap) {
     if (base::utils::Str::cStringCaseEq(configStr, item.configString)) {
       return item.configType;
     }
@@ -658,7 +662,7 @@ void Logger::reconfigure(void) {
 
 bool Logger::isValidId(std::string_view id) {
   for (const auto c : id) {
-    if (!base::utils::Str::contains(base::consts::kValidLoggerIdSymbols, c)) {
+    if (base::consts::kValidLoggerIdSymbols.find(c) == std::string_view::npos) {
       return false;
     }
   }
@@ -781,7 +785,8 @@ void File::buildStrippedFilename(const char* filename, char buff[], std::size_t 
   STRCAT(buff, filename, limit);
 }
 
-void File::buildBaseFilename(const std::string& fullPath, char buff[], std::size_t limit, const char* separator) {
+void File::buildBaseFilename(const std::string& fullPath, char buff[], std::size_t limit,
+    std::string_view separator) {
   const char *filename = fullPath.c_str();
   std::size_t lastSlashAt = fullPath.find_last_of(separator);
   filename += lastSlashAt ? lastSlashAt+1 : 0;
@@ -917,14 +922,6 @@ bool Str::cStringCaseEq(const char* s1, const char* s2) {
   return d == 0;
 }
 
-bool Str::contains(const char* str, char c) {
-  for (; *str; ++str) {
-    if (*str == c)
-      return true;
-  }
-  return false;
-}
-
 char* Str::convertAndAddToBuff(std::size_t n, int len, char* buf, const char* bufLim, bool zeroPadded) {
   char localBuff[10] = "";
   char* p = localBuff + sizeof(localBuff) - 2;
@@ -940,9 +937,26 @@ char* Str::convertAndAddToBuff(std::size_t n, int len, char* buf, const char* bu
   return addToBuff(p, buf, bufLim);
 }
 
-char* Str::addToBuff(const char* str, char* buf, const char* bufLim) {
-  while ((buf < bufLim) && ((*buf = *str++) != '\0'))
+char* Str::addToBuff(std::string_view str, char* buf, const char* bufLim) {
+  if (buf >= bufLim) {
+    return buf;
+  }
+
+  for (const auto c : str) {
+    if (buf >= bufLim) {
+      break;
+    }
+    *buf = c;
     ++buf;
+  }
+
+  if (buf < bufLim) {
+    *buf = '\0';
+  } else if (buf == bufLim) {
+    /* Overwrite last byte with null to avoid overruns */
+    *(buf - 1) = '\0';
+  }
+
   return buf;
 }
 
@@ -1031,7 +1045,7 @@ const std::string OS::getBashOutput(const char* command) {
 #endif  // (ELPP_OS_UNIX && !ELPP_OS_ANDROID && !ELPP_CYGWIN)
 }
 
-std::string OS::getEnvironmentVariable(const char* variableName, const char* defaultVal,
+std::string OS::getEnvironmentVariable(const char* variableName, std::string_view defaultVal,
                                        const char* alternativeBashCommand) {
 #if ELPP_OS_UNIX
   const char* val = getenv(variableName);
@@ -1431,7 +1445,7 @@ void LogFormat::parseFromFormat(const base::type::string_t& userFormat) {
   // and then storing it.
   base::type::string_t formatCopy = userFormat;
   m_flags = 0x0;
-  auto conditionalAddFlag = [&](const base::type::char_t* specifier, base::FormatFlags flag) {
+  auto conditionalAddFlag = [&](base::type::string_view_t specifier, base::FormatFlags flag) {
     std::size_t foundAt = base::type::string_t::npos;
     while ((foundAt = formatCopy.find(specifier, foundAt + 1)) != base::type::string_t::npos) {
       if (foundAt > 0 && formatCopy[foundAt - 1] == base::consts::kFormatSpecifierChar) {
@@ -1477,7 +1491,7 @@ void LogFormat::parseFromFormat(const base::type::string_t& userFormat) {
 
 void LogFormat::updateDateFormat(std::size_t index, base::type::string_t& currFormat) {
   if (hasFlag(base::FormatFlags::DateTime)) {
-    index += ELPP_STRLEN(base::consts::kDateTimeFormatSpecifier);
+    index += base::consts::kDateTimeFormatSpecifier.size();
   }
   const base::type::char_t* ptr = currFormat.c_str() + index;
   if ((currFormat.size() > index) && (ptr[0] == '{')) {
@@ -1497,7 +1511,7 @@ void LogFormat::updateDateFormat(std::size_t index, base::type::string_t& currFo
   } else {
     // No format provided, use default
     if (hasFlag(base::FormatFlags::DateTime)) {
-      m_dateTimeFormat = std::string(base::consts::kDefaultDateTimeFormat);
+      m_dateTimeFormat = base::consts::kDefaultDateTimeFormat;
     }
   }
 }
@@ -1690,10 +1704,10 @@ unsigned long TypedConfigurations::getULong(std::string confVal) {
 std::string TypedConfigurations::resolveFilename(const std::string& filename) {
   std::string resultingFilename = filename;
   std::size_t dateIndex = std::string::npos;
-  std::string dateTimeFormatSpecifierStr = std::string(base::consts::kDateTimeFormatSpecifierForFilename);
-  if ((dateIndex = resultingFilename.find(dateTimeFormatSpecifierStr.c_str())) != std::string::npos) {
+  std::string_view dateTimeFormatSpecifierStr = base::consts::kDateTimeFormatSpecifierForFilename;
+  if ((dateIndex = resultingFilename.find(dateTimeFormatSpecifierStr)) != std::string::npos) {
     while (dateIndex > 0 && resultingFilename[dateIndex - 1] == base::consts::kFormatSpecifierChar) {
-      dateIndex = resultingFilename.find(dateTimeFormatSpecifierStr.c_str(), dateIndex + 1);
+      dateIndex = resultingFilename.find(dateTimeFormatSpecifierStr, dateIndex + 1);
     }
     if (dateIndex != std::string::npos) {
       const char* ptr = resultingFilename.c_str() + dateIndex;
@@ -1715,7 +1729,7 @@ std::string TypedConfigurations::resolveFilename(const std::string& filename) {
         resultingFilename.erase(dateIndex + dateTimeFormatSpecifierStr.size(), count);
         fmt = ss.str();
       } else {
-        fmt = std::string(base::consts::kDefaultDateTimeFormatInFilename);
+        fmt = base::consts::kDefaultDateTimeFormatInFilename;
       }
       base::SubsecondPrecision ssPrec(3);
       std::string now = base::utils::DateTime::getDateTime(fmt.c_str(), &ssPrec);

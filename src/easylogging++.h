@@ -383,6 +383,7 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #  endif // defined(WIN32_LEAN_AND_MEAN)
 #endif  // ELPP_OS_UNIX
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -423,9 +424,6 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #   include <set>
 #   include <bitset>
 #   include <stack>
-#  if defined(ELPP_LOG_STD_ARRAY)
-#      include <array>
-#  endif  // defined(ELPP_LOG_STD_ARRAY)
 #  if defined(ELPP_LOG_UNORDERED_SET)
 #      include <unordered_set>
 #  endif  // defined(ELPP_UNORDERED_SET)
@@ -609,9 +607,9 @@ namespace el {
 class LevelHelper : base::StaticClass {
  public:
   /// @brief Represents minimum valid level. Useful when iterating through enum.
-  static const base::type::EnumType kMinValid = static_cast<base::type::EnumType>(Level::Trace);
+  static constexpr auto kMinValid = static_cast<base::type::EnumType>(Level::Trace);
   /// @brief Represents maximum valid level. This is used internally and you should not need it.
-  static const base::type::EnumType kMaxValid = static_cast<base::type::EnumType>(Level::Info);
+  static constexpr auto kMaxValid = static_cast<base::type::EnumType>(Level::Info);
   /// @brief Casts level to int, useful for iterating through enum.
   static base::type::EnumType castToInt(Level level) {
     return static_cast<base::type::EnumType>(level);
@@ -670,9 +668,9 @@ enum class ConfigurationType : base::type::EnumType {
 class ConfigurationTypeHelper : base::StaticClass {
  public:
   /// @brief Represents minimum valid configuration type. Useful when iterating through enum.
-  static const base::type::EnumType kMinValid = static_cast<base::type::EnumType>(ConfigurationType::Enabled);
+  static constexpr auto kMinValid = static_cast<base::type::EnumType>(ConfigurationType::Enabled);
   /// @brief Represents maximum valid configuration type. This is used internally and you should not need it.
-  static const base::type::EnumType kMaxValid = static_cast<base::type::EnumType>(ConfigurationType::MaxLogFileSize);
+  static constexpr auto kMaxValid = static_cast<base::type::EnumType>(ConfigurationType::MaxLogFileSize);
   /// @brief Casts configuration type to int, useful for iterating through enum.
   static base::type::EnumType castToInt(ConfigurationType configurationType) {
     return static_cast<base::type::EnumType>(configurationType);
@@ -734,57 +732,59 @@ enum class LoggingFlag : base::type::EnumType {
 namespace base {
 /// @brief Namespace containing constants used internally.
 namespace consts {
-static const char  kFormatSpecifierCharValue               =      'v';
-static const char  kFormatSpecifierChar                    =      '%';
-static const unsigned int kMaxLogPerCounter                =      100000;
-static const unsigned int kMaxLogPerContainer              =      100;
-static const unsigned int kDefaultSubsecondPrecision       =      3;
+static constexpr char  kFormatSpecifierCharValue               =      'v';
+static constexpr char  kFormatSpecifierChar                    =      '%';
+static constexpr unsigned int kMaxLogPerCounter                =      100000;
+static constexpr unsigned int kMaxLogPerContainer              =      100;
+static constexpr unsigned int kDefaultSubsecondPrecision       =      3;
 
 #ifdef ELPP_DEFAULT_LOGGER
-static const char* kDefaultLoggerId                        =      ELPP_DEFAULT_LOGGER;
+static constexpr auto* kDefaultLoggerId                        =      ELPP_DEFAULT_LOGGER;
 #else
-static const char* kDefaultLoggerId                        =      "default";
+static constexpr auto* kDefaultLoggerId                        =      "default";
 #endif
 
 #if defined(ELPP_FEATURE_ALL) || defined(ELPP_FEATURE_PERFORMANCE_TRACKING)
 #ifdef ELPP_DEFAULT_PERFORMANCE_LOGGER
-static const char* kPerformanceLoggerId                    =      ELPP_DEFAULT_PERFORMANCE_LOGGER;
+static constexpr auto* kPerformanceLoggerId                    =      ELPP_DEFAULT_PERFORMANCE_LOGGER;
 #else
-static const char* kPerformanceLoggerId                    =      "performance";
+static constexpr auto* kPerformanceLoggerId                    =      "performance";
 #endif // ELPP_DEFAULT_PERFORMANCE_LOGGER
 #endif
 
 #if defined(ELPP_SYSLOG)
-static const char* kSysLogLoggerId                         =      "syslog";
+static constexpr auto* kSysLogLoggerId                         =      "syslog";
 #endif  // defined(ELPP_SYSLOG)
 
 #if ELPP_OS_WINDOWS
-static const char* kFilePathSeparator                      =      "\\";
+static constexpr std::string_view kFilePathSeparator                      =      "\\";
 #else
-static const char* kFilePathSeparator                      =      "/";
+static constexpr std::string_view kFilePathSeparator                      =      "/";
 #endif  // ELPP_OS_WINDOWS
 
-static const std::size_t kSourceFilenameMaxLength          =      100;
-static const std::size_t kSourceLineMaxLength              =      10;
-static const Level kPerformanceTrackerDefaultLevel         =      Level::Info;
-const struct {
+static constexpr std::size_t kSourceFilenameMaxLength          =      100;
+static constexpr std::size_t kSourceLineMaxLength              =      10;
+static constexpr Level kPerformanceTrackerDefaultLevel         =      Level::Info;
+struct TimeFormatItem {
   double value;
   const base::type::char_t* unit;
-} kTimeFormats[] = {
+};
+constexpr std::array<TimeFormatItem, 6> kTimeFormats{{
   { 1000.0f, ELPP_LITERAL("us") },
   { 1000.0f, ELPP_LITERAL("ms") },
   { 60.0f, ELPP_LITERAL("seconds") },
   { 60.0f, ELPP_LITERAL("minutes") },
   { 24.0f, ELPP_LITERAL("hours") },
   { 7.0f, ELPP_LITERAL("days") }
-};
-static const int kTimeFormatsCount                           =      sizeof(kTimeFormats) / sizeof(kTimeFormats[0]);
-const struct {
+}};
+static constexpr auto kTimeFormatsCount = kTimeFormats.size();
+struct CrashSignalItem {
   int numb;
   const char* name;
   const char* brief;
   const char* detail;
-} kCrashSignals[] = {
+};
+constexpr std::array<CrashSignalItem, 5> kCrashSignals{{
   // NOTE: Do not re-order, if you do please check CrashHandler(bool) constructor and CrashHandler::setHandler(..)
   {
     SIGABRT, "SIGABRT", "Abnormal termination",
@@ -806,8 +806,8 @@ const struct {
     SIGINT, "SIGINT", "Interactive attention signal",
     "Interruption generated (generally) by user or operating system."
   },
-};
-static const int kCrashSignalsCount                          =      sizeof(kCrashSignals) / sizeof(kCrashSignals[0]);
+}};
+static constexpr auto kCrashSignalsCount = kCrashSignals.size();
 }  // namespace consts
 }  // namespace base
 using PreRollOutCallback = std::function<void(const std::filesystem::path &, std::size_t)>;
@@ -1048,7 +1048,7 @@ class File : base::StaticClass {
   /// @brief builds base filename and puts it in buff
   static void buildBaseFilename(const std::string& fullPath, char buff[],
                                 std::size_t limit = base::consts::kSourceFilenameMaxLength,
-                                const char* separator = base::consts::kFilePathSeparator);
+                                std::string_view separator = base::consts::kFilePathSeparator);
 };
 /// @brief String utilities helper class used internally. You should not use it.
 class Str : base::StaticClass {
@@ -1110,11 +1110,8 @@ class Str : base::StaticClass {
   /// Dont use strcasecmp because of CRT (VC++)
   static bool cStringCaseEq(const char* s1, const char* s2);
 
-  /// @brief Returns true if c exist in str
-  static bool contains(const char* str, char c);
-
   static char* convertAndAddToBuff(std::size_t n, int len, char* buf, const char* bufLim, bool zeroPadded = true);
-  static char* addToBuff(const char* str, char* buf, const char* bufLim);
+  static char* addToBuff(std::string_view str, char* buf, const char* bufLim);
   static char* clearBuff(char buff[], std::size_t lim);
 
   /// @brief Converts wchar* to char*
@@ -1151,7 +1148,7 @@ class OS : base::StaticClass {
   /// @param defaultVal If no environment variable or value found the value to return by default
   /// @param alternativeBashCommand If environment variable not found what would be alternative bash command
   ///        in order to look for value user is looking for. E.g, for 'user' alternative command will 'whoami'
-  static std::string getEnvironmentVariable(const char* variableName, const char* defaultVal,
+  static std::string getEnvironmentVariable(const char* variableName, std::string_view defaultVal,
       const char* alternativeBashCommand = nullptr);
   /// @brief Gets current username.
   static std::string currentUser(void);
