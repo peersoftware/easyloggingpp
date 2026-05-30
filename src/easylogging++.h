@@ -515,11 +515,11 @@ namespace type {
 #  else
 #    define ELPP_COUT std::wcout
 #  endif  // defined ELPP_CUSTOM_COUT
-typedef wchar_t char_t;
-typedef std::wstring string_t;
-typedef std::wstringstream stringstream_t;
-typedef std::wfstream fstream_t;
-typedef std::wostream ostream_t;
+using char_t = wchar_t;
+using string_t = std::wstring;
+using stringstream_t = std::wstringstream;
+using fstream_t = std::wfstream;
+using ostream_t = std::wostream;
 #else
 #  define ELPP_LITERAL(txt) txt
 #  define ELPP_STRLEN strlen
@@ -528,25 +528,25 @@ typedef std::wostream ostream_t;
 #  else
 #    define ELPP_COUT std::cout
 #  endif  // defined ELPP_CUSTOM_COUT
-typedef char char_t;
-typedef std::string string_t;
-typedef std::stringstream stringstream_t;
-typedef std::fstream fstream_t;
-typedef std::ostream ostream_t;
+using char_t = char;
+using string_t = std::string;
+using stringstream_t = std::stringstream;
+using fstream_t = std::fstream;
+using ostream_t = std::ostream;
 #endif  // defined(ELPP_UNICODE)
 #if defined(ELPP_CUSTOM_COUT_LINE)
 #  define ELPP_COUT_LINE(logLine) ELPP_CUSTOM_COUT_LINE(logLine)
 #else
 #  define ELPP_COUT_LINE(logLine) logLine << std::flush
 #endif // defined(ELPP_CUSTOM_COUT_LINE)
-typedef unsigned int EnumType;
-typedef unsigned short VerboseLevel;
-typedef unsigned long int LineNumber;
-typedef std::shared_ptr<base::Storage> StoragePointer;
-typedef std::shared_ptr<LogDispatchCallback> LogDispatchCallbackPtr;
-typedef std::shared_ptr<PerformanceTrackingCallback> PerformanceTrackingCallbackPtr;
-typedef std::shared_ptr<LoggerRegistrationCallback> LoggerRegistrationCallbackPtr;
-typedef std::unique_ptr<el::base::PerformanceTracker> PerformanceTrackerPtr;
+using EnumType = unsigned int;
+using VerboseLevel = unsigned short;
+using LineNumber = unsigned long int;
+using StoragePointer = std::shared_ptr<base::Storage>;
+using LogDispatchCallbackPtr = std::shared_ptr<LogDispatchCallback>;
+using PerformanceTrackingCallbackPtr = std::shared_ptr<PerformanceTrackingCallback>;
+using LoggerRegistrationCallbackPtr = std::shared_ptr<LoggerRegistrationCallback>;
+using PerformanceTrackerPtr = std::unique_ptr<el::base::PerformanceTracker>;
 }  // namespace type
 /// @brief Internal helper class that prevent copy constructor for class
 ///
@@ -851,7 +851,7 @@ class SubsecondPrecision {
   void init(int width);
 };
 /// @brief Type alias of SubsecondPrecision
-typedef SubsecondPrecision MillisecondsWidth;
+using MillisecondsWidth = SubsecondPrecision;
 /// @brief Namespace containing utility functions/static classes used internally
 namespace utils {
 /// @brief Bitwise operations for C++11 strong enum class. This casts e into Flag_T and returns value after bitwise operation
@@ -958,11 +958,11 @@ class ScopedLock : base::NoCopy {
   ScopedLock(void);
 };
 } // namespace internal
-typedef base::threading::internal::Mutex Mutex;
-typedef base::threading::internal::ScopedLock<base::threading::Mutex> ScopedLock;
+using Mutex = base::threading::internal::Mutex;
+using ScopedLock = base::threading::internal::ScopedLock<base::threading::Mutex>;
 #  else
-typedef std::recursive_mutex Mutex;
-typedef std::lock_guard<base::threading::Mutex> ScopedLock;
+using Mutex = std::recursive_mutex;
+using ScopedLock = std::lock_guard<base::threading::Mutex>;
 #  endif  // !ELPP_USE_STD_THREADING
 #else
 namespace internal {
@@ -988,8 +988,8 @@ class NoScopedLock : base::NoCopy {
   NoScopedLock(void);
 };
 }  // namespace internal
-typedef base::threading::internal::NoMutex Mutex;
-typedef base::threading::internal::NoScopedLock<base::threading::Mutex> ScopedLock;
+using Mutex = base::threading::internal::NoMutex;
+using ScopedLock = base::threading::internal::NoScopedLock<base::threading::Mutex>;
 #endif  // ELPP_THREADING_ENABLED
 /// @brief Base of thread safe class, this class is inheritable-only
 class ThreadSafe {
@@ -1240,8 +1240,8 @@ class CommandLineArgs {
 template <typename T_Ptr, typename Container>
 class AbstractRegistry : public base::threading::ThreadSafe {
  public:
-  typedef typename Container::iterator iterator;
-  typedef typename Container::const_iterator const_iterator;
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
 
   /// @brief Default constructor
   AbstractRegistry(void) {}
@@ -1355,8 +1355,8 @@ template <typename T_Ptr, typename T_Key = std::string_view>
 class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::unique_ptr<T_Ptr>>> {
  public:
   using AbstractRegType = AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::unique_ptr<T_Ptr>>>;
-  typedef typename Registry<T_Ptr, T_Key>::iterator iterator;
-  typedef typename Registry<T_Ptr, T_Key>::const_iterator const_iterator;
+  using iterator = typename Registry<T_Ptr, T_Key>::iterator;
+  using const_iterator = typename Registry<T_Ptr, T_Key>::const_iterator;
 
   Registry(void) {}
 
@@ -1423,8 +1423,8 @@ template <typename T_Ptr, typename Pred>
 class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<std::unique_ptr<T_Ptr>>> {
  public:
   using AbstractRegType = AbstractRegistry<T_Ptr, std::vector<std::unique_ptr<T_Ptr>>>;
-  typedef typename RegistryWithPred<T_Ptr, Pred>::iterator iterator;
-  typedef typename RegistryWithPred<T_Ptr, Pred>::const_iterator const_iterator;
+  using iterator = typename RegistryWithPred<T_Ptr, Pred>::iterator;
+  using const_iterator = typename RegistryWithPred<T_Ptr, Pred>::const_iterator;
 
   RegistryWithPred(void) {
   }
@@ -1615,7 +1615,7 @@ class LogFormat : public Loggable {
 };
 }  // namespace base
 /// @brief Resolving function for format specifier
-typedef std::function<std::string(const LogMessage*)> FormatSpecifierValueResolver;
+using FormatSpecifierValueResolver = std::function<std::string(const LogMessage*)>;
 /// @brief User-provided custom format specifier
 /// @see el::Helpers::installCustomFormatSpecifier
 /// @see FormatSpecifierValueResolver
@@ -1868,7 +1868,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
 };
 
 namespace base {
-typedef std::shared_ptr<base::type::fstream_t> FileStreamPtr;
+using FileStreamPtr = std::shared_ptr<base::type::fstream_t>;
 
 class LogStreamsReferenceMap : public base::threading::ThreadSafe {
  public:
@@ -1883,7 +1883,7 @@ class LogStreamsReferenceMap : public base::threading::ThreadSafe {
   StreamsMap m_streams;
 };
 
-typedef std::shared_ptr<base::LogStreamsReferenceMap> LogStreamsReferenceMapPtr;
+using LogStreamsReferenceMapPtr = std::shared_ptr<base::LogStreamsReferenceMap>;
 using FilenameSet = std::set<std::filesystem::path>;
 
 /// @brief Configurations with data types.
@@ -2198,7 +2198,7 @@ class LogBuilder : base::NoCopy {
   bool m_termSupportsColor;
   friend class el::base::DefaultLogDispatchCallback;
 };
-typedef std::shared_ptr<LogBuilder> LogBuilderPtr;
+using LogBuilderPtr = std::shared_ptr<LogBuilder>;
 /// @brief Represents a logger holding ID and configurations we need to write logs
 ///
 /// @detail This class does not write logs itself instead its used by writer to read configurations from.
@@ -2781,8 +2781,8 @@ namespace workarounds {
 template <typename T, typename Container>
 class IterableContainer {
  public:
-  typedef typename Container::iterator iterator;
-  typedef typename Container::const_iterator const_iterator;
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
   IterableContainer(void) {}
   virtual ~IterableContainer(void) {}
   iterator begin(void) {
@@ -3610,7 +3610,7 @@ class StackTrace : base::NoCopy {
 /// @brief Handles unexpected crashes
 class CrashHandler : base::NoCopy {
  public:
-  typedef void (*Handler)(int);
+  using Handler = void(*)(int);
 
   explicit CrashHandler(bool useDefault);
   explicit CrashHandler(const Handler& cHandler) {
@@ -3681,7 +3681,6 @@ class Helpers : base::StaticClass {
 #if defined(ELPP_FEATURE_ALL) || defined(ELPP_FEATURE_CRASH_LOG)
   /// @brief Overrides default crash handler and installs custom handler.
   /// @param crashHandler A functor with no return type that takes single int argument.
-  ///        Handler is a typedef with specification: void (*Handler)(int)
   static inline void setCrashHandler(const el::base::debug::CrashHandler::Handler& crashHandler) {
     el::elCrashHandler.setHandler(crashHandler);
   }
