@@ -110,7 +110,7 @@ static const char* kConfigurationLoggerId                  =      "--";
 namespace utils {
 
 /// @brief Aborts application due with user-defined status
-static void abort(int status, const std::string& reason) {
+static void abort(int status, std::string_view reason) {
   // Both status and reason params are there for debugging with tools like gdb etc
   ELPP_UNUSED(status);
   ELPP_UNUSED(reason);
@@ -454,15 +454,15 @@ void Configurations::Parser::ignoreComments(std::string* line) {
   }
 }
 
-bool Configurations::Parser::isLevel(const std::string& line) {
-  return base::utils::Str::startsWith(line, std::string(base::consts::kConfigurationLevel));
+bool Configurations::Parser::isLevel(std::string_view line) {
+  return base::utils::Str::startsWith(line, base::consts::kConfigurationLevel);
 }
 
-bool Configurations::Parser::isComment(const std::string& line) {
-  return base::utils::Str::startsWith(line, std::string(base::consts::kConfigurationComment));
+bool Configurations::Parser::isComment(std::string_view line) {
+  return base::utils::Str::startsWith(line, base::consts::kConfigurationComment);
 }
 
-bool Configurations::Parser::isConfig(const std::string& line) {
+bool Configurations::Parser::isConfig(std::string_view line) {
   std::size_t assignment = line.find('=');
   return line != "" &&
          ((line[0] >= 'A' && line[0] <= 'Z') || (line[0] >= 'a' && line[0] <= 'z')) &&
@@ -656,9 +656,9 @@ void Logger::reconfigure(void) {
   configure(m_configurations);
 }
 
-bool Logger::isValidId(const std::string& id) {
-  for (std::string::const_iterator it = id.begin(); it != id.end(); ++it) {
-    if (!base::utils::Str::contains(base::consts::kValidLoggerIdSymbols, *it)) {
+bool Logger::isValidId(std::string_view id) {
+  for (const auto c : id) {
+    if (!base::utils::Str::contains(base::consts::kValidLoggerIdSymbols, c)) {
       return false;
     }
   }
@@ -840,11 +840,11 @@ std::string& Str::trim(std::string& str) {
   return ltrim(rtrim(str));
 }
 
-bool Str::startsWith(const std::string& str, const std::string& start) {
+bool Str::startsWith(std::string_view str, std::string_view start) {
   return (str.length() >= start.length()) && (str.compare(0, start.length(), start) == 0);
 }
 
-bool Str::endsWith(const std::string& str, const std::string& end) {
+bool Str::endsWith(std::string_view str, std::string_view end) {
   return (str.length() >= end.length()) && (str.compare(str.length() - end.length(), end.length(), end) == 0);
 }
 
@@ -853,8 +853,8 @@ std::string& Str::replaceAll(std::string& str, char replaceWhat, char replaceWit
   return str;
 }
 
-std::string& Str::replaceAll(std::string& str, const std::string& replaceWhat,
-                             const std::string& replaceWith) {
+std::string& Str::replaceAll(std::string& str, std::string_view replaceWhat,
+                             std::string_view replaceWith) {
   if (replaceWhat == replaceWith)
     return str;
   std::size_t foundAt = std::string::npos;
@@ -864,8 +864,8 @@ std::string& Str::replaceAll(std::string& str, const std::string& replaceWhat,
   return str;
 }
 
-void Str::replaceFirstWithEscape(base::type::string_t& str, const base::type::string_t& replaceWhat,
-                                 const base::type::string_t& replaceWith) {
+void Str::replaceFirstWithEscape(base::type::string_t& str, base::type::string_view_t replaceWhat,
+                                 base::type::string_view_t replaceWith) {
   std::size_t foundAt = base::type::string_t::npos;
   while ((foundAt = str.find(replaceWhat, foundAt + 1)) != base::type::string_t::npos) {
     if (foundAt > 0 && str[foundAt - 1] == base::consts::kFormatSpecifierChar) {
@@ -878,8 +878,8 @@ void Str::replaceFirstWithEscape(base::type::string_t& str, const base::type::st
   }
 }
 #if defined(ELPP_UNICODE)
-void Str::replaceFirstWithEscape(base::type::string_t& str, const base::type::string_t& replaceWhat,
-                                 const std::string& replaceWith) {
+void Str::replaceFirstWithEscape(base::type::string_t& str, base::type::string_view_t replaceWhat,
+                                 std::string_view replaceWith) {
   replaceFirstWithEscape(str, replaceWhat, base::type::string_t(replaceWith.begin(), replaceWith.end()));
 }
 #endif  // defined(ELPP_UNICODE)
@@ -1927,12 +1927,12 @@ void VRegistry::setLevel(base::type::VerboseLevel level) {
 void VRegistry::setModules(const char* modules) {
   base::threading::ScopedLock scopedLock(lock());
   auto addSuffix = [](std::stringstream& ss, const char* sfx, const char* prev) {
-    if (prev != nullptr && base::utils::Str::endsWith(ss.str(), std::string(prev))) {
+    if (prev != nullptr && base::utils::Str::endsWith(ss.str(), prev)) {
       std::string chr(ss.str().substr(0, ss.str().size() - strlen(prev)));
       ss.str(std::string(""));
       ss << chr;
     }
-    if (base::utils::Str::endsWith(ss.str(), std::string(sfx))) {
+    if (base::utils::Str::endsWith(ss.str(), sfx)) {
       std::string chr(ss.str().substr(0, ss.str().size() - strlen(sfx)));
       ss.str(std::string(""));
       ss << chr;
@@ -2400,19 +2400,19 @@ base::type::string_t DefaultLogBuilder::build(const LogMessage* logMessage, bool
     // File
     base::utils::Str::clearBuff(buff, base::consts::kSourceFilenameMaxLength);
     base::utils::File::buildStrippedFilename(logMessage->file().c_str(), buff);
-    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogFileFormatSpecifier, std::string(buff));
+    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogFileFormatSpecifier, buff);
   }
   if (logFormat->hasFlag(base::FormatFlags::FileBase)) {
     // FileBase
     base::utils::Str::clearBuff(buff, base::consts::kSourceFilenameMaxLength);
     base::utils::File::buildBaseFilename(logMessage->file(), buff);
-    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogFileBaseFormatSpecifier, std::string(buff));
+    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogFileBaseFormatSpecifier, buff);
   }
   if (logFormat->hasFlag(base::FormatFlags::Line)) {
     // Line
     char* buf = base::utils::Str::clearBuff(buff, base::consts::kSourceLineMaxLength);
     buf = base::utils::Str::convertAndAddToBuff(logMessage->line(), base::consts::kSourceLineMaxLength, buf, bufLim, false);
-    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogLineFormatSpecifier, std::string(buff));
+    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogLineFormatSpecifier, buff);
   }
   if (logFormat->hasFlag(base::FormatFlags::Location)) {
     // Location
@@ -2423,13 +2423,13 @@ base::type::string_t DefaultLogBuilder::build(const LogMessage* logMessage, bool
     buf = base::utils::Str::addToBuff(":", buf, bufLim);
     buf = base::utils::Str::convertAndAddToBuff(logMessage->line(),  base::consts::kSourceLineMaxLength, buf, bufLim,
           false);
-    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogLocationFormatSpecifier, std::string(buff));
+    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kLogLocationFormatSpecifier, buff);
   }
   if (logMessage->level() == Level::Verbose && logFormat->hasFlag(base::FormatFlags::VerboseLevel)) {
     // Verbose level
     char* buf = base::utils::Str::clearBuff(buff, 1);
     buf = base::utils::Str::convertAndAddToBuff(logMessage->verboseLevel(), 1, buf, bufLim, false);
-    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kVerboseLevelFormatSpecifier, std::string(buff));
+    base::utils::Str::replaceFirstWithEscape(logLine, base::consts::kVerboseLevelFormatSpecifier, buff);
   }
   if (logFormat->hasFlag(base::FormatFlags::LogMessage)) {
     // Log message
@@ -3041,7 +3041,7 @@ void Loggers::configureFromGlobal(const char* globalConfigurationFilePath) {
     if (Configurations::Parser::isComment(line)) continue;
     Configurations::Parser::ignoreComments(&line);
     base::utils::Str::trim(line);
-    if (line.size() > 2 && base::utils::Str::startsWith(line, std::string(base::consts::kConfigurationLoggerId))) {
+    if (line.size() > 2 && base::utils::Str::startsWith(line, base::consts::kConfigurationLoggerId)) {
       if (!ss.str().empty() && logger != nullptr) {
         configure();
       }

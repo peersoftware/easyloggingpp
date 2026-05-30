@@ -517,6 +517,7 @@ namespace type {
 #  endif  // defined ELPP_CUSTOM_COUT
 using char_t = wchar_t;
 using string_t = std::wstring;
+using string_view_t = std::wstring_view;
 using stringstream_t = std::wstringstream;
 using fstream_t = std::wfstream;
 using ostream_t = std::wostream;
@@ -530,6 +531,7 @@ using ostream_t = std::wostream;
 #  endif  // defined ELPP_CUSTOM_COUT
 using char_t = char;
 using string_t = std::string;
+using string_view_t = std::string_view;
 using stringstream_t = std::stringstream;
 using fstream_t = std::fstream;
 using ostream_t = std::ostream;
@@ -1067,13 +1069,13 @@ class Str : base::StaticClass {
   /// @param str String to check
   /// @param start String to check against
   /// @return Returns true if starts with specified string, false otherwise
-  static bool startsWith(const std::string& str, const std::string& start);
+  static bool startsWith(std::string_view str, std::string_view start);
 
   /// @brief Determines whether or not str ends with specified string
   /// @param str String to check
   /// @param end String to check against
   /// @return Returns true if ends with specified string, false otherwise
-  static bool endsWith(const std::string& str, const std::string& end);
+  static bool endsWith(std::string_view str, std::string_view end);
 
   /// @brief Replaces all instances of replaceWhat with 'replaceWith'. Original variable is changed for performance.
   /// @param [in,out] str String to replace from
@@ -1087,14 +1089,14 @@ class Str : base::StaticClass {
   /// @param replaceWhat Character to replace
   /// @param replaceWith Character to replace with
   /// @return Modified (original) str
-  static std::string& replaceAll(std::string& str, const std::string& replaceWhat,
-                                 const std::string& replaceWith);
+  static std::string& replaceAll(std::string& str, std::string_view replaceWhat,
+                                 std::string_view replaceWith);
 
-  static void replaceFirstWithEscape(base::type::string_t& str, const base::type::string_t& replaceWhat,
-                                     const base::type::string_t& replaceWith);
+  static void replaceFirstWithEscape(base::type::string_t& str, base::type::string_view_t replaceWhat,
+                                     base::type::string_view_t replaceWith);
 #if defined(ELPP_UNICODE)
-  static void replaceFirstWithEscape(base::type::string_t& str, const base::type::string_t& replaceWhat,
-                                     const std::string& replaceWith);
+  static void replaceFirstWithEscape(base::type::string_t& str, base::type::string_view_t replaceWhat,
+                                     std::string_view replaceWith);
 #endif  // defined(ELPP_UNICODE)
   /// @brief Converts string to uppercase
   /// @param str String to convert
@@ -1675,7 +1677,7 @@ class Configuration : public Loggable {
   /// @brief Set string based configuration value
   /// @param value Value to set. Values have to be std::string; For boolean values use "true", "false", for any integral values
   ///        use them in quotes. They will be parsed when configuring
-  inline void setValue(const std::string& value) {
+  inline void setValue(std::string_view value) {
     m_value = value;
   }
 
@@ -1840,9 +1842,9 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
    private:
     friend class el::Loggers;
     static void ignoreComments(std::string* line);
-    static bool isLevel(const std::string& line);
-    static bool isComment(const std::string& line);
-    static inline bool isConfig(const std::string& line);
+    static bool isLevel(std::string_view line);
+    static bool isComment(std::string_view line);
+    static inline bool isConfig(std::string_view line);
     static bool parseLine(std::string* line, std::string* currConfigStr, std::string* currLevelStr, Level* currLevel,
                           Configurations* conf);
   };
@@ -2228,7 +2230,7 @@ class Logger : public base::threading::ThreadSafe, public Loggable {
     return m_parentApplicationName;
   }
 
-  inline void setParentApplicationName(const std::string& parentApplicationName) {
+  inline void setParentApplicationName(std::string_view parentApplicationName) {
     m_parentApplicationName = parentApplicationName;
   }
 
@@ -2240,7 +2242,7 @@ class Logger : public base::threading::ThreadSafe, public Loggable {
     return m_typedConfigurations.get();
   }
 
-  static bool isValidId(const std::string& id);
+  static bool isValidId(std::string_view id);
 
   /// @brief Flushes logger to sync all log files for all levels
   void flush(void);
@@ -2661,7 +2663,7 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
 #endif // defined(ELPP_FEATURE_ALL) || defined(ELPP_FEATURE_PERFORMANCE_TRACKING)
 
   /// @brief Sets thread name for current thread. Requires std::thread
-  inline void setThreadName(const std::string& name) {
+  inline void setThreadName(std::string_view name) {
     if (name.empty()) return;
     base::threading::ScopedLock scopedLock(m_threadNamesLock);
     m_threadNames[base::threading::getCurrentThreadId()] = name;
