@@ -392,6 +392,7 @@ ELPP_INTERNAL_DEBUGGING_OUT_INFO << ELPP_INTERNAL_DEBUGGING_MSG(internalInfoStre
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -853,16 +854,6 @@ class SubsecondPrecision {
 typedef SubsecondPrecision MillisecondsWidth;
 /// @brief Namespace containing utility functions/static classes used internally
 namespace utils {
-/// @brief Deletes memory safely and points to null
-template <typename T>
-static
-typename std::enable_if<std::is_pointer<T*>::value, void>::type
-safeDelete(T*& pointer) {
-  if (pointer == nullptr)
-    return;
-  delete pointer;
-  pointer = nullptr;
-}
 /// @brief Bitwise operations for C++11 strong enum class. This casts e into Flag_T and returns value after bitwise operation
 /// Use these function as <pre>flag = bitwise::Or<MyEnum>(MyEnum::val1, flag);</pre>
 namespace bitwise {
@@ -1042,7 +1033,7 @@ class File : base::StaticClass {
  public:
   /// @brief Creates new out file stream for specified filename.
   /// @return Pointer to newly created fstream or nullptr
-  static base::type::fstream_t* newFileStream(const std::filesystem::path& filename);
+  static std::shared_ptr<base::type::fstream_t> newFileStream(const std::filesystem::path& filename);
 
   /// @brief Gets size of file provided in stream
   static std::size_t getSizeOfFile(base::type::fstream_t* fs);
@@ -1298,8 +1289,7 @@ class AbstractRegistry : public base::threading::ThreadSafe {
     return *this;
   }
 
-  virtual ~AbstractRegistry(void) {
-  }
+  virtual ~AbstractRegistry(void) = default;
 
   /// @return Iterator pointer from start of repository
   virtual inline iterator begin(void) ELPP_FINAL {
@@ -1361,16 +1351,17 @@ class AbstractRegistry : public base::threading::ThreadSafe {
 /// @detail NOTE: This is thread-unsafe implementation (although it contains lock function, it does not use these functions)
 ///         of AbstractRegistry<T_Ptr, Container>. Any implementation of this class should be
 ///         explicitly (by using lock functions)
-template <typename T_Ptr, typename T_Key = const char*>
-class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, T_Ptr*>> {
+template <typename T_Ptr, typename T_Key = std::string_view>
+class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::unique_ptr<T_Ptr>>> {
  public:
+  using AbstractRegType = AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::unique_ptr<T_Ptr>>>;
   typedef typename Registry<T_Ptr, T_Key>::iterator iterator;
   typedef typename Registry<T_Ptr, T_Key>::const_iterator const_iterator;
 
   Registry(void) {}
 
   /// @brief Copy constructor that is useful for base classes. Try to avoid this constructor, use move constructor.
-  Registry(const Registry& sr) : AbstractRegistry<T_Ptr, std::vector<T_Ptr*>>() {
+  Registry(const Registry& sr) : AbstractRegType() {
     if (this == &sr) {
       return;
     }
@@ -1388,33 +1379,24 @@ class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, T_Ptr*
     return *this;
   }
 
-  virtual ~Registry(void) {
-    unregisterAll();
-  }
+  ~Registry(void) override = default;
 
  protected:
-  virtual void unregisterAll(void) ELPP_FINAL {
-    if (!this->empty()) {
-      for (auto&& curr : this->list()) {
-        base::utils::safeDelete(curr.second);
-      }
-      this->list().clear();
-    }
+  void unregisterAll(void) ELPP_FINAL override {
+    this->list().clear();
   }
 
 /// @brief Registers new registry to repository.
-  virtual void registerNew(const T_Key& uniqKey, T_Ptr* ptr) ELPP_FINAL {
-    unregister(uniqKey);
-    this->list().insert(std::make_pair(uniqKey, ptr));
+  T_Ptr *registerNew(const T_Key& uniqKey, std::unique_ptr<T_Ptr>&& ptr) {
+    auto* ret = ptr.get();
+
+    this->list()[uniqKey] = std::move(ptr);
+    return ret;
   }
 
 /// @brief Unregisters single entry mapped to specified unique key
   void unregister(const T_Key& uniqKey) {
-    T_Ptr* existing = get(uniqKey);
-    if (existing != nullptr) {
-      this->list().erase(uniqKey);
-      base::utils::safeDelete(existing);
-    }
+    this->list().erase(uniqKey);
   }
 
 /// @brief Gets pointer from repository. If none found, nullptr is returned.
@@ -1422,13 +1404,13 @@ class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, T_Ptr*
     iterator it = this->list().find(uniqKey);
     return it == this->list().end()
            ? nullptr
-           : it->second;
+           : it->second.get();
   }
 
  private:
-  virtual void deepCopy(const AbstractRegistry<T_Ptr, std::unordered_map<T_Key, T_Ptr*>>& sr) ELPP_FINAL {
-    for (const_iterator it = sr.cbegin(); it != sr.cend(); ++it) {
-      registerNew(it->first, new T_Ptr(*it->second));
+  void deepCopy(const AbstractRegType& sr) ELPP_FINAL override {
+    for (const auto& [key, ptr] : sr.list()) {
+        registerNew(key, std::make_unique<T_Ptr>(*ptr));
     }
   }
 };
@@ -1438,20 +1420,19 @@ class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, T_Ptr*
 /// @detail NOTE: This is thread-unsafe implementation of AbstractRegistry<T_Ptr, Container>. Any implementation of this class
 /// should be made thread-safe explicitly
 template <typename T_Ptr, typename Pred>
-class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<T_Ptr*>> {
+class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<std::unique_ptr<T_Ptr>>> {
  public:
+  using AbstractRegType = AbstractRegistry<T_Ptr, std::vector<std::unique_ptr<T_Ptr>>>;
   typedef typename RegistryWithPred<T_Ptr, Pred>::iterator iterator;
   typedef typename RegistryWithPred<T_Ptr, Pred>::const_iterator const_iterator;
 
   RegistryWithPred(void) {
   }
 
-  virtual ~RegistryWithPred(void) {
-    unregisterAll();
-  }
+  ~RegistryWithPred(void) override = default;
 
   /// @brief Copy constructor that is useful for base classes. Try to avoid this constructor, use move constructor.
-  RegistryWithPred(const RegistryWithPred& sr) : AbstractRegistry<T_Ptr, std::vector<T_Ptr*>>() {
+  RegistryWithPred(const RegistryWithPred& sr) : AbstractRegType() {
     if (this == &sr) {
       return;
     }
@@ -1477,49 +1458,49 @@ class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<T_Ptr*>> {
   }
 
  protected:
-  virtual void unregisterAll(void) ELPP_FINAL {
-    if (!this->empty()) {
-      for (auto&& curr : this->list()) {
-        base::utils::safeDelete(curr);
-      }
-      this->list().clear();
-    }
+  void unregisterAll(void) ELPP_FINAL override {
+    this->list().clear();
   }
 
-  virtual void unregister(T_Ptr*& ptr) ELPP_FINAL {
-    if (ptr) {
-      iterator iter = this->begin();
-      for (; iter != this->end(); ++iter) {
-        if (ptr == *iter) {
-          break;
-        }
-      }
-      if (iter != this->end() && *iter != nullptr) {
+  void unregister(const T_Ptr* ptr) {
+    if (ptr == nullptr) {
+      return;
+    }
+
+    for (auto iter = this->begin(); iter != this->end(); ++iter) {
+      if (ptr == iter->get()) {
         this->list().erase(iter);
-        base::utils::safeDelete(*iter);
+        break;
       }
     }
   }
 
-  virtual inline void registerNew(T_Ptr* ptr) ELPP_FINAL {
-    this->list().push_back(ptr);
+  inline T_Ptr *registerNew(std::unique_ptr<T_Ptr>&& ptr) {
+    auto* ret = ptr.get();
+
+    this->list().push_back(std::move(ptr));
+    return ret;
   }
 
 /// @brief Gets pointer from repository with specified arguments. Arguments are passed to predicate
 /// in order to validate pointer.
   template <typename T, typename T2>
   T_Ptr* get(const T& arg1, const T2 arg2) {
-    iterator iter = std::find_if(this->list().begin(), this->list().end(), Pred(arg1, arg2));
+    Pred pred(arg1, arg2);
+    iterator iter = std::find_if(this->list().begin(), this->list().end(),
+      [&pred](const auto& ele) {
+        return pred(ele.get());
+    });
     if (iter != this->list().end() && *iter != nullptr) {
-      return *iter;
+      return iter->get();
     }
     return nullptr;
   }
 
  private:
-  virtual void deepCopy(const AbstractRegistry<T_Ptr, std::vector<T_Ptr*>>& sr) {
-    for (const_iterator it = sr.list().begin(); it != sr.list().end(); ++it) {
-      registerNew(new T_Ptr(**it));
+  void deepCopy(const AbstractRegType& sr) override {
+    for (const auto& ptr : sr.list()) {
+      registerNew(std::make_unique<T_Ptr>(*ptr));
     }
   }
 };
@@ -2227,10 +2208,7 @@ class Logger : public base::threading::ThreadSafe, public Loggable {
   Logger(const std::string& id, const Configurations& configurations, base::LogStreamsReferenceMapPtr logStreamsReference);
   Logger(const Logger& logger);
   Logger& operator=(const Logger& logger);
-
-  virtual ~Logger(void) {
-    base::utils::safeDelete(m_typedConfigurations);
-  }
+  ~Logger(void) override = default;
 
   virtual inline void log(el::base::type::ostream_t& os) const {
     os << m_id.c_str();
@@ -2259,7 +2237,7 @@ class Logger : public base::threading::ThreadSafe, public Loggable {
   }
 
   inline base::TypedConfigurations* typedConfigurations(void) {
-    return m_typedConfigurations;
+    return m_typedConfigurations.get();
   }
 
   static bool isValidId(const std::string& id);
@@ -2308,10 +2286,10 @@ inline void FUNCTION_NAME(const T&);
 #endif // ELPP_VARIADIC_TEMPLATES_SUPPORTED
  private:
   std::string m_id;
-  base::TypedConfigurations* m_typedConfigurations;
+  std::shared_ptr<base::TypedConfigurations> m_typedConfigurations;
   base::type::stringstream_t m_stream;
   std::string m_parentApplicationName;
-  bool m_isConfigured;
+  bool m_isConfigured{false};
   Configurations m_configurations;
   std::unordered_map<Level, unsigned int> m_unflushedCount;
   base::LogStreamsReferenceMapPtr m_logStreamsReference = nullptr;
@@ -2560,7 +2538,7 @@ class IWorker {
 class Storage : base::NoCopy, public base::threading::ThreadSafe {
  public:
 #if ELPP_ASYNC_LOGGING
-  Storage(const LogBuilderPtr& defaultLogBuilder, base::IWorker* asyncDispatchWorker);
+  Storage(const LogBuilderPtr& defaultLogBuilder, std::unique_ptr<base::IWorker>&& asyncDispatchWorker);
 #else
   explicit Storage(const LogBuilderPtr& defaultLogBuilder);
 #endif  // ELPP_ASYNC_LOGGING
@@ -2580,20 +2558,20 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
   }
 
   inline base::RegisteredHitCounters* hitCounters(void) const {
-    return m_registeredHitCounters;
+    return m_registeredHitCounters.get();
   }
 
   inline base::RegisteredLoggers* registeredLoggers(void) const {
-    return m_registeredLoggers;
+    return m_registeredLoggers.get();
   }
 
   inline base::VRegistry* vRegistry(void) const {
-    return m_vRegistry;
+    return m_vRegistry.get();
   }
 
 #if ELPP_ASYNC_LOGGING
   inline base::AsyncLogQueue* asyncLogQueue(void) const {
-    return m_asyncLogQueue;
+    return m_asyncLogQueue.get();
   }
 #endif  // ELPP_ASYNC_LOGGING
 
@@ -2698,13 +2676,13 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
     return it->second;
   }
  private:
-  base::RegisteredHitCounters* m_registeredHitCounters;
-  base::RegisteredLoggers* m_registeredLoggers;
+  std::unique_ptr<base::RegisteredHitCounters> m_registeredHitCounters;
+  std::unique_ptr<base::RegisteredLoggers> m_registeredLoggers;
   base::type::EnumType m_flags;
-  base::VRegistry* m_vRegistry;
+  std::unique_ptr<base::VRegistry> m_vRegistry;
 #if ELPP_ASYNC_LOGGING
-  base::AsyncLogQueue* m_asyncLogQueue;
-  base::IWorker* m_asyncDispatchWorker;
+  std::unique_ptr<base::AsyncLogQueue> m_asyncLogQueue;
+  std::unique_ptr<base::IWorker> m_asyncDispatchWorker;
 #endif  // ELPP_ASYNC_LOGGING
   base::utils::CommandLineArgs m_commandLineArgs;
   PreRollOutCallback m_preRollOutCallback;
@@ -3947,10 +3925,10 @@ class VersionInfo : base::StaticClass {
 /// @see el::base::PerformanceTracker::checkpoint
 // Note: Do not surround this definition with null macro because of obj instance
 #define TIMED_SCOPE_IF(obj, blockname, condition) el::base::type::PerformanceTrackerPtr obj( condition ? \
-  new el::base::PerformanceTracker(blockname, ELPP_MIN_UNIT) : nullptr )
+  std::make_unique<el::base::PerformanceTracker>(blockname, ELPP_MIN_UNIT) : nullptr )
 #define TIMED_SCOPE(obj, blockname) TIMED_SCOPE_IF(obj, blockname, true)
 #define TIMED_BLOCK(obj, blockName) for (struct { int i; el::base::type::PerformanceTrackerPtr timer; } obj = { 0, \
-  el::base::type::PerformanceTrackerPtr(new el::base::PerformanceTracker(blockName, ELPP_MIN_UNIT)) }; obj.i < 1; ++obj.i)
+  std::make_unique<el::base::PerformanceTracker>(blockName, ELPP_MIN_UNIT) }; obj.i < 1; ++obj.i)
 /// @brief Performance tracked function. Performance gets written when goes out of scope using
 ///        'performance' logger.
 ///
@@ -4569,10 +4547,11 @@ el::base::debug::CrashHandler elCrashHandler(ELPP_USE_DEF_CRASH_HANDLER); \
 }
 
 #if ELPP_ASYNC_LOGGING
-#  define INITIALIZE_EASYLOGGINGPP ELPP_INIT_EASYLOGGINGPP(new el::base::Storage(el::LogBuilderPtr(new el::base::DefaultLogBuilder()),\
-new el::base::AsyncDispatchWorker()))
+
+#  define INITIALIZE_EASYLOGGINGPP ELPP_INIT_EASYLOGGINGPP(std::make_shared<el::base::Storage>(std::make_shared<el::base::DefaultLogBuilder>(),\
+std::make_unique<el::base::AsyncDispatchWorker>()))
 #else
-#  define INITIALIZE_EASYLOGGINGPP ELPP_INIT_EASYLOGGINGPP(new el::base::Storage(el::LogBuilderPtr(new el::base::DefaultLogBuilder())))
+#  define INITIALIZE_EASYLOGGINGPP ELPP_INIT_EASYLOGGINGPP(std::make_shared<el::base::Storage>(std::make_shared<el::base::DefaultLogBuilder>()))
 #endif  // ELPP_ASYNC_LOGGING
 #define INITIALIZE_NULL_EASYLOGGINGPP \
 namespace el {\

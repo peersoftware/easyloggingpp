@@ -28,8 +28,8 @@ private:
 
 class People : public Registry<Person> {
 public:
-    void regNew(const char* name, Person* person) {
-        Registry<Person>::registerNew(name, person);
+    Person *regNew(const char* name, std::unique_ptr<Person> &&person) {
+        return Registry<Person>::registerNew(name, std::move(person));
     }
     void clear() {
         Registry<Person>::unregisterAll();
@@ -41,8 +41,8 @@ public:
 
 class PeopleWithPred : public RegistryWithPred<Person, PersonPred> {
 public:
-    void regNew(Person* person) {
-        RegistryWithPred<Person, PersonPred>::registerNew(person);
+    Person *regNew(std::unique_ptr<Person> &&person) {
+        return RegistryWithPred<Person, PersonPred>::registerNew(std::move(person));
     }
     void clear() {
         RegistryWithPred<Person, PersonPred>::unregisterAll();
@@ -55,14 +55,13 @@ public:
 /// Tests for usage of registry (Thread unsafe but its OK with gtest)
 TEST(RegistryTest, RegisterAndUnregister) {
     People people;
-    Person* john = new Person("John", 433212345);
-    people.regNew("John", john);
-
-    Person* john2 = new Person("John", 123456);
-    people.regNew("John", john2);
+    people.regNew("John", std::make_unique<Person>("John", 433212345));
+    people.regNew("John", std::make_unique<Person>("John", 123456));
 
     EXPECT_EQ(1, people.size());
-    unsigned int n = people.getPerson("John")->num();
+    auto *john = people.getPerson("John");
+    ASSERT_NE(john, nullptr);
+    unsigned int n = john->num();
     EXPECT_EQ(n, 123456);
 
     People people2;
@@ -77,8 +76,8 @@ TEST(RegistryTest, RegisterAndUnregister) {
     EXPECT_TRUE(people2.empty());
 
     PeopleWithPred peopleWithPred;
-    peopleWithPred.regNew(new Person("McDonald", 123));
-    peopleWithPred.regNew(new Person("McDonald", 157));
+    peopleWithPred.regNew(std::make_unique<Person>("McDonald", 123));
+    peopleWithPred.regNew(std::make_unique<Person>("McDonald", 157));
     EXPECT_EQ(peopleWithPred.size(), 2);
 
     Person *p = peopleWithPred.get("McDonald", 157);

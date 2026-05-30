@@ -26,7 +26,6 @@
 #include "string-utils-test.h"
 //#include "syslog-test.h"
 #include "typed-configurations-test.h"
-#include "utilities-test.h"
 #include "verbose-app-arguments-test.h"
 #include "write-all-test.h"
 

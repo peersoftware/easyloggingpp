@@ -311,8 +311,8 @@ void Configurations::setFromBase(Configurations* base) {
     return;
   }
   base::threading::ScopedLock scopedLock(base->lock());
-  for (Configuration*& conf : base->list()) {
-    set(conf);
+  for (const auto& conf : base->list()) {
+    set(conf.get());
   }
 }
 
@@ -540,7 +540,7 @@ void Configurations::unsafeSetIfNotExist(Level level, ConfigurationType configur
 void Configurations::unsafeSet(Level level, ConfigurationType configurationType, const std::string& value) {
   Configuration* conf = RegistryWithPred<Configuration, Configuration::Predicate>::get(level, configurationType);
   if (conf == nullptr) {
-    registerNew(new Configuration(level, configurationType, value));
+    registerNew(std::make_unique<Configuration>(level, configurationType, value));
   } else {
     conf->setValue(value);
   }
@@ -604,28 +604,23 @@ Logger::Logger(const std::string& id, base::LogStreamsReferenceMapPtr logStreams
 Logger::Logger(const std::string& id, const Configurations& configurations,
                base::LogStreamsReferenceMapPtr logStreamsReference) :
   m_id(id),
-  m_typedConfigurations(nullptr),
-  m_parentApplicationName(std::string()),
-  m_isConfigured(false),
   m_logStreamsReference(logStreamsReference) {
   initUnflushedCount();
   configure(configurations);
 }
 
-Logger::Logger(const Logger& logger) {
-  base::utils::safeDelete(m_typedConfigurations);
-  m_id = logger.m_id;
-  m_typedConfigurations = logger.m_typedConfigurations;
-  m_parentApplicationName = logger.m_parentApplicationName;
-  m_isConfigured = logger.m_isConfigured;
-  m_configurations = logger.m_configurations;
-  m_unflushedCount = logger.m_unflushedCount;
-  m_logStreamsReference = logger.m_logStreamsReference;
+Logger::Logger(const Logger& logger) :
+  m_id(logger.m_id),
+  m_typedConfigurations(logger.m_typedConfigurations),
+  m_parentApplicationName(logger.m_parentApplicationName),
+  m_isConfigured(logger.m_isConfigured),
+  m_configurations(logger.m_configurations),
+  m_unflushedCount(logger.m_unflushedCount),
+  m_logStreamsReference(logger.m_logStreamsReference) {
 }
 
 Logger& Logger::operator=(const Logger& logger) {
   if (&logger != this) {
-    base::utils::safeDelete(m_typedConfigurations);
     m_id = logger.m_id;
     m_typedConfigurations = logger.m_typedConfigurations;
     m_parentApplicationName = logger.m_parentApplicationName;
@@ -650,8 +645,8 @@ void Logger::configure(const Configurations& configurations) {
   if (m_configurations != configurations) {
     m_configurations.setFromBase(const_cast<Configurations*>(&configurations));
   }
-  base::utils::safeDelete(m_typedConfigurations);
-  m_typedConfigurations = new base::TypedConfigurations(&m_configurations, m_logStreamsReference);
+  m_typedConfigurations =
+    std::make_shared<base::TypedConfigurations>(&m_configurations, m_logStreamsReference);
   resolveLoggerFormatSpec();
   m_isConfigured = true;
 }
@@ -721,8 +716,8 @@ namespace utils {
 
 // File
 
-base::type::fstream_t* File::newFileStream(const std::filesystem::path& filename) {
-  base::type::fstream_t *fs = new base::type::fstream_t(filename,
+std::shared_ptr<base::type::fstream_t> File::newFileStream(const std::filesystem::path& filename) {
+  auto fs = std::make_shared<base::type::fstream_t>(filename,
       base::type::fstream_t::out
 #if !defined(ELPP_FRESH_LOG_FILE)
       | base::type::fstream_t::app
@@ -739,7 +734,7 @@ base::type::fstream_t* File::newFileStream(const std::filesystem::path& filename
   if (fs->is_open()) {
     fs->flush();
   } else {
-    base::utils::safeDelete(fs);
+    fs.reset();
     ELPP_INTERNAL_ERROR("Bad file [" << filename << "]", true);
   }
   return fs;
@@ -1632,9 +1627,8 @@ void TypedConfigurations::build(Configurations* configurations) {
     base::utils::Str::trim(boolStr);
     return (boolStr == "TRUE" || boolStr == "true" || boolStr == "1");
   };
-  std::vector<Configuration*> withFileSizeLimit;
-  for (Configurations::const_iterator it = configurations->begin(); it != configurations->end(); ++it) {
-    Configuration* conf = *it;
+  std::vector<const Configuration*> withFileSizeLimit;
+  for (const auto& conf : *configurations) {
     // We cannot use switch on strong enums because Intel C++ dont support them yet
     if (conf->configurationType() == ConfigurationType::Enabled) {
       setValue(conf->level(), getBool(conf->value()), &m_enabledMap);
@@ -1660,23 +1654,21 @@ void TypedConfigurations::build(Configurations* configurations) {
       auto v = getULong(conf->value());
       setValue(conf->level(), static_cast<std::size_t>(v), &m_maxLogFileSizeMap);
       if (v != 0) {
-        withFileSizeLimit.push_back(conf);
+        withFileSizeLimit.emplace_back(conf.get());
       }
     } else if (conf->configurationType() == ConfigurationType::LogFlushThreshold) {
       setValue(conf->level(), static_cast<std::size_t>(getULong(conf->value())), &m_logFlushThresholdMap);
     }
   }
   // As mentioned earlier, we will now set filename configuration in separate loop to deal with non-existent files
-  for (Configurations::const_iterator it = configurations->begin(); it != configurations->end(); ++it) {
-    Configuration* conf = *it;
+  for (const auto& conf : *configurations) {
     if (conf->configurationType() == ConfigurationType::Filename) {
       insertFile(conf->level(), conf->value());
     }
   }
-  for (std::vector<Configuration*>::iterator conf = withFileSizeLimit.begin();
-       conf != withFileSizeLimit.end(); ++conf) {
+  for (const auto* conf : withFileSizeLimit) {
     // This is not unsafe as mutex is locked in currect scope
-    unsafeValidateFileRolling((*conf)->level(), base::defaultPreRollOutCallback);
+    unsafeValidateFileRolling(conf->level(), base::defaultPreRollOutCallback);
   }
 }
 
@@ -1750,20 +1742,17 @@ void TypedConfigurations::insertFile(Level level, const std::string& fullFilenam
     auto& logStreamsReferenceMap = m_logStreamsReference->getMap();
     auto filestreamIter = logStreamsReferenceMap.find(resolvedFilename);
 
-    base::type::fstream_t* fs = nullptr;
     if (filestreamIter == logStreamsReferenceMap.end()) {
       // We need a completely new stream, nothing to share with
-      fs = base::utils::File::newFileStream(resolvedFilename);
-      m_filenameMap.insert(std::make_pair(level, resolvedFilename));
-      m_fileStreamMap.insert(std::make_pair(level, base::FileStreamPtr(fs)));
-      logStreamsReferenceMap.insert(std::make_pair(resolvedFilename, base::FileStreamPtr(m_fileStreamMap.at(level))));
-    } else {
-      // Woops! we have an existing one, share it!
-      m_filenameMap.insert(std::make_pair(level, filestreamIter->first));
-      m_fileStreamMap.insert(std::make_pair(level, base::FileStreamPtr(filestreamIter->second)));
-      fs = filestreamIter->second.get();
+      auto fs = base::utils::File::newFileStream(resolvedFilename);
+
+      filestreamIter = logStreamsReferenceMap.try_emplace(resolvedFilename, fs).first;
     }
-    if (fs == nullptr) {
+
+    m_filenameMap.try_emplace(level, filestreamIter->first);
+    m_fileStreamMap.try_emplace(level, filestreamIter->second);
+
+    if (filestreamIter->second == nullptr) {
       // We display bad file error from newFileStream()
       ELPP_INTERNAL_ERROR("Setting [TO_FILE] of ["
                           << LevelHelper::convertToString(level) << "] to FALSE", false);
@@ -1800,7 +1789,7 @@ bool RegisteredHitCounters::validateEveryN(const char* filename, base::type::Lin
   base::threading::ScopedLock scopedLock(lock());
   base::HitCounter* counter = get(filename, lineNumber);
   if (counter == nullptr) {
-    registerNew(counter = new base::HitCounter(filename, lineNumber));
+    counter = registerNew(std::make_unique<base::HitCounter>(filename, lineNumber));
   }
   counter->validateHitCounts(n);
   bool result = (n >= 1 && counter->hitCounts() != 0 && counter->hitCounts() % n == 0);
@@ -1813,7 +1802,7 @@ bool RegisteredHitCounters::validateAfterN(const char* filename, base::type::Lin
   base::threading::ScopedLock scopedLock(lock());
   base::HitCounter* counter = get(filename, lineNumber);
   if (counter == nullptr) {
-    registerNew(counter = new base::HitCounter(filename, lineNumber));
+    counter = registerNew(std::make_unique<base::HitCounter>(filename, lineNumber));
   }
   // Do not use validateHitCounts here since we do not want to reset counter here
   // Note the >= instead of > because we are incrementing
@@ -1830,7 +1819,7 @@ bool RegisteredHitCounters::validateNTimes(const char* filename, base::type::Lin
   base::threading::ScopedLock scopedLock(lock());
   base::HitCounter* counter = get(filename, lineNumber);
   if (counter == nullptr) {
-    registerNew(counter = new base::HitCounter(filename, lineNumber));
+    counter = registerNew(std::make_unique<base::HitCounter>(filename, lineNumber));
   }
   counter->increment();
   // Do not use validateHitCounts here since we do not want to reset counter here
@@ -1856,9 +1845,9 @@ Logger* RegisteredLoggers::get(const std::string& id, bool forceCreation) {
       ELPP_ASSERT(validId, "Invalid logger ID [" << id << "]. Not registering this logger.");
       return nullptr;
     }
-    logger_ = new Logger(id, m_defaultConfigurations, m_logStreamsReference);
+    logger_ =
+      registerNew(id, std::make_unique<Logger>(id, m_defaultConfigurations, m_logStreamsReference));
     logger_->m_logBuilder = m_defaultLogBuilder;
-    registerNew(id, logger_);
     LoggerRegistrationCallback* callback = nullptr;
     for (const std::pair<std::string, base::type::LoggerRegistrationCallbackPtr>& h
          : m_loggerRegistrationCallbacks) {
@@ -2047,18 +2036,19 @@ void VRegistry::setFromArgs(const base::utils::CommandLineArgs* commandLineArgs)
 #endif // !defined(ELPP_DEFAULT_LOGGING_FLAGS)
 // Storage
 #if ELPP_ASYNC_LOGGING
-Storage::Storage(const LogBuilderPtr& defaultLogBuilder, base::IWorker* asyncDispatchWorker) :
+Storage::Storage(const LogBuilderPtr& defaultLogBuilder,
+    std::unique_ptr<base::IWorker>&& asyncDispatchWorker) :
 #else
 Storage::Storage(const LogBuilderPtr& defaultLogBuilder) :
 #endif  // ELPP_ASYNC_LOGGING
-  m_registeredHitCounters(new base::RegisteredHitCounters()),
-  m_registeredLoggers(new base::RegisteredLoggers(defaultLogBuilder)),
+  m_registeredHitCounters(std::make_unique<base::RegisteredHitCounters>()),
+  m_registeredLoggers(std::make_unique<base::RegisteredLoggers>(defaultLogBuilder)),
   m_flags(ELPP_DEFAULT_LOGGING_FLAGS),
-  m_vRegistry(new base::VRegistry(0, &m_flags)),
+  m_vRegistry(std::make_unique<base::VRegistry>(0, &m_flags)),
 
 #if ELPP_ASYNC_LOGGING
-  m_asyncLogQueue(new base::AsyncLogQueue()),
-  m_asyncDispatchWorker(asyncDispatchWorker),
+  m_asyncLogQueue(std::make_unique<base::AsyncLogQueue>()),
+  m_asyncDispatchWorker(std::move(asyncDispatchWorker)),
 #endif  // ELPP_ASYNC_LOGGING
 
   m_preRollOutCallback(base::defaultPreRollOutCallback) {
@@ -2104,16 +2094,16 @@ Storage::~Storage(void) {
   uninstallLogDispatchCallback<base::AsyncLogDispatchCallback>(std::string("AsyncLogDispatchCallback"));
   installLogDispatchCallback<base::DefaultLogDispatchCallback>(std::string("DefaultLogDispatchCallback"));
   ELPP_INTERNAL_INFO(5, "Destroying asyncDispatchWorker");
-  base::utils::safeDelete(m_asyncDispatchWorker);
+  m_asyncDispatchWorker.reset();
   ELPP_INTERNAL_INFO(5, "Destroying asyncLogQueue");
-  base::utils::safeDelete(m_asyncLogQueue);
+  m_asyncLogQueue.reset();
 #endif  // ELPP_ASYNC_LOGGING
   ELPP_INTERNAL_INFO(5, "Destroying registeredHitCounters");
-  base::utils::safeDelete(m_registeredHitCounters);
+  m_registeredHitCounters.reset();
   ELPP_INTERNAL_INFO(5, "Destroying registeredLoggers");
-  base::utils::safeDelete(m_registeredLoggers);
+  m_registeredLoggers.reset();
   ELPP_INTERNAL_INFO(5, "Destroying vRegistry");
-  base::utils::safeDelete(m_vRegistry);
+  m_vRegistry.reset();
 }
 
 bool Storage::hasCustomFormatSpecifier(const char* formatSpecifier) {
@@ -2474,7 +2464,7 @@ void LogDispatcher::dispatch(void) {
   // ELPP_NO_GLOBAL_LOCK is defined
   base::threading::ScopedLock scopedLock(ELPP->lock());
 #endif
-  base::TypedConfigurations* tc = m_logMessage->logger()->m_typedConfigurations;
+  base::TypedConfigurations* tc = m_logMessage->logger()->m_typedConfigurations.get();
   if (ELPP->hasFlag(LoggingFlag::StrictLogFileSizeCheck)) {
     tc->validateFileRolling(m_logMessage->level(), ELPP->preRollOutCallback());
   }
@@ -2986,7 +2976,7 @@ Logger* Loggers::reconfigureLogger(const std::string& identity, ConfigurationTyp
 void Loggers::reconfigureAllLoggers(const Configurations& configurations) {
   for (base::RegisteredLoggers::iterator it = ELPP->registeredLoggers()->begin();
        it != ELPP->registeredLoggers()->end(); ++it) {
-    Loggers::reconfigureLogger(it->second, configurations);
+    Loggers::reconfigureLogger(it->second.get(), configurations);
   }
 }
 
@@ -2994,7 +2984,7 @@ void Loggers::reconfigureAllLoggers(Level level, ConfigurationType configuration
                                     const std::string& value) {
   for (base::RegisteredLoggers::iterator it = ELPP->registeredLoggers()->begin();
        it != ELPP->registeredLoggers()->end(); ++it) {
-    Logger* logger = it->second;
+    Logger* logger = it->second.get();
     logger->configurations()->set(level, configurationType, value);
     logger->reconfigure();
   }

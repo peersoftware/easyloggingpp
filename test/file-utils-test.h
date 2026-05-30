@@ -4,21 +4,21 @@
 #include "test.h"
 
 static const char* filename = "/tmp/files_utils_test";
-static el::base::type::fstream_t* fs;
+static std::shared_ptr<el::base::type::fstream_t> fs;
 
 TEST(FileUtilsTest, NewFileStream) {
     fs = File::newFileStream(filename);
     EXPECT_NE(nullptr, fs);
     EXPECT_TRUE(fs->is_open());
-    cleanFile(filename, fs);
+    cleanFile(filename, fs.get());
 }
 
 TEST(FileUtilsTest, GetSizeOfFile) {
-    EXPECT_EQ(File::getSizeOfFile(fs), 0);
+    EXPECT_EQ(File::getSizeOfFile(fs.get()), 0);
     const char* data = "123";
     (*fs) << data;
     fs->flush();
-    EXPECT_EQ(File::getSizeOfFile(fs), strlen(data));
+    EXPECT_EQ(File::getSizeOfFile(fs.get()), strlen(data));
 }
 
 TEST(FileUtilsTest, CreatePath) {
