@@ -1400,7 +1400,7 @@ class Registry : public AbstractRegistry<T_Ptr, std::unordered_map<T_Key, std::u
 
 /// @brief Gets pointer from repository. If none found, nullptr is returned.
   T_Ptr* get(const T_Key& uniqKey) {
-    iterator it = this->list().find(uniqKey);
+    auto it = this->list().find(uniqKey);
     return it == this->list().end()
            ? nullptr
            : it->second.get();
@@ -1450,7 +1450,7 @@ class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<std::unique_
   }
 
   friend base::type::ostream_t& operator<<(base::type::ostream_t& os, const RegistryWithPred& sr) {
-    for (const_iterator it = sr.list().begin(); it != sr.list().end(); ++it) {
+    for (auto it = sr.list().begin(); it != sr.list().end(); ++it) {
       os << ELPP_LITERAL("    ") << **it << ELPP_LITERAL("\n");
     }
     return os;
@@ -1486,7 +1486,7 @@ class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<std::unique_
   template <typename T, typename T2>
   T_Ptr* get(const T& arg1, const T2 arg2) {
     Pred pred(arg1, arg2);
-    iterator iter = std::find_if(this->list().begin(), this->list().end(),
+    auto iter = std::find_if(this->list().begin(), this->list().end(),
       [&pred](const auto& ele) {
         return pred(ele.get());
     });
@@ -1955,7 +1955,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
   template <typename Conf_T>
   Conf_T unsafeGetConfigByVal(Level level, const std::unordered_map<Level, Conf_T>* confMap, const char* confName) {
     ELPP_UNUSED(confName);
-    typename std::unordered_map<Level, Conf_T>::const_iterator it = confMap->find(level);
+    auto it = confMap->find(level);
     if (it == confMap->end()) {
       try {
         return confMap->at(Level::Global);
@@ -1972,7 +1972,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
   template <typename Conf_T>
   Conf_T& unsafeGetConfigByRef(Level level, std::unordered_map<Level, Conf_T>* confMap, const char* confName) {
     ELPP_UNUSED(confName);
-    typename std::unordered_map<Level, Conf_T>::iterator it = confMap->find(level);
+    auto it = confMap->find(level);
     if (it == confMap->end()) {
       try {
         return confMap->at(Level::Global);
@@ -1994,7 +1994,7 @@ class TypedConfigurations : public base::threading::ThreadSafe {
       return;
     }
     // If same value exist in generic level already, dont add it to explicit level
-    typename std::unordered_map<Level, Conf_T>::iterator it = confMap->find(Level::Global);
+    auto it = confMap->find(Level::Global);
     if (it != confMap->end() && it->second == value) {
       return;
     }
@@ -2668,7 +2668,7 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
 
   inline std::string getThreadName(const std::string& threadId) {
     base::threading::ScopedLock scopedLock(m_threadNamesLock);
-    std::unordered_map<std::string, std::string>::const_iterator it = m_threadNames.find(threadId);
+    auto it = m_threadNames.find(threadId);
     if (it == m_threadNames.end()) {
       return threadId;
     }
@@ -3107,8 +3107,8 @@ return writeIterator(template_inst.begin(), template_inst.end(), template_inst.s
 el::base::type::ostream_t& operator<<(el::base::type::ostream_t& ss, const ContainerType& container) {\
 const el::base::type::char_t* sep = ELPP->hasFlag(el::LoggingFlag::NewLineForContainer) ? \
 ELPP_LITERAL("\n    ") : ELPP_LITERAL(", ");\
-ContainerType::const_iterator elem = container.begin();\
-ContainerType::const_iterator endElem = container.end();\
+auto elem = container.begin();\
+auto endElem = container.end();\
 std::size_t size_ = container.SizeMethod; \
 ss << ELPP_LITERAL("[");\
 for (std::size_t i = 0; elem != endElem && i < el::base::consts::kMaxLogPerContainer; ++i, ++elem) { \
