@@ -996,14 +996,14 @@ using ScopedLock = base::threading::internal::NoScopedLock<base::threading::Mute
 /// @brief Base of thread safe class, this class is inheritable-only
 class ThreadSafe {
  public:
-  virtual inline void acquireLock(void) ELPP_FINAL { m_mutex.lock(); }
-  virtual inline void releaseLock(void) ELPP_FINAL { m_mutex.unlock(); }
-  virtual inline base::threading::Mutex& lock(void) ELPP_FINAL { return m_mutex; }
+  virtual inline void acquireLock(void) const ELPP_FINAL { m_mutex.lock(); }
+  virtual inline void releaseLock(void) const ELPP_FINAL { m_mutex.unlock(); }
+  virtual inline base::threading::Mutex& lock(void) const ELPP_FINAL { return m_mutex; }
  protected:
   ThreadSafe(void) {}
   virtual ~ThreadSafe(void) {}
  private:
-  base::threading::Mutex m_mutex;
+  mutable base::threading::Mutex m_mutex;
 };
 
 #if ELPP_THREADING_ENABLED
@@ -1141,7 +1141,7 @@ class OS : base::StaticClass {
   /// @detail This is applicable only on unix based systems, for all other OS, an empty string is returned.
   /// @param command Bash command
   /// @return Result of bash output or empty string if no result found.
-  static const std::string getBashOutput(const char* command);
+  static std::string getBashOutput(const char* command);
 
   /// @brief Gets environment variable. This is cross-platform and CRT safe (for VC++)
   /// @param variableName Environment variable name
@@ -1187,7 +1187,7 @@ class DateTime : base::StaticClass {
       base::TimestampUnit timestampUnit);
 
 
-  static struct ::tm* buildTimeInfo(struct timeval* currTime, struct ::tm* timeInfo);
+  static struct ::tm* buildTimeInfo(const struct timeval* currTime, struct ::tm* timeInfo);
  private:
   static char* parseFormat(char* buf, std::size_t bufSz, const char* format, const struct tm* tInfo,
                            std::size_t msec, const base::SubsecondPrecision* ssPrec);
@@ -1196,21 +1196,14 @@ class DateTime : base::StaticClass {
 class CommandLineArgs {
  public:
   CommandLineArgs(void) {
-    setArgs(0, static_cast<char**>(nullptr));
+    setArgs(0, nullptr);
   }
   CommandLineArgs(int argc, const char** argv) {
     setArgs(argc, argv);
   }
-  CommandLineArgs(int argc, char** argv) {
-    setArgs(argc, argv);
-  }
-  virtual ~CommandLineArgs(void) {}
+  virtual ~CommandLineArgs(void) = default;
   /// @brief Sets arguments and parses them
-  inline void setArgs(int argc, const char** argv) {
-    setArgs(argc, const_cast<char**>(argv));
-  }
-  /// @brief Sets arguments and parses them
-  void setArgs(int argc, char** argv);
+  void setArgs(int argc, const char** argv);
   /// @brief Returns true if arguments contain paramKey with a value (separated by '=')
   bool hasParamWithValue(const char* paramKey) const;
   /// @brief Returns value of arguments
@@ -1226,7 +1219,7 @@ class CommandLineArgs {
 
  private:
   int m_argc;
-  char** m_argv;
+  const char** m_argv;
   std::unordered_map<std::string, std::string> m_paramsWithValue;
   std::vector<std::string> m_params;
 };
@@ -1484,7 +1477,7 @@ class RegistryWithPred : public AbstractRegistry<T_Ptr, std::vector<std::unique_
 /// @brief Gets pointer from repository with specified arguments. Arguments are passed to predicate
 /// in order to validate pointer.
   template <typename T, typename T2>
-  T_Ptr* get(const T& arg1, const T2 arg2) {
+  T_Ptr* get(const T& arg1, const T2 arg2) const {
     Pred pred(arg1, arg2);
     auto iter = std::find_if(this->list().begin(), this->list().end(),
       [&pred](const auto& ele) {
@@ -1712,8 +1705,8 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   /// @param base If provided, this configuration will be based off existing repository that this argument is pointing to.
   /// @see parseFromFile(const std::string&, Configurations* base)
   /// @see setRemainingToDefault()
-  Configurations(const std::filesystem::path& configurationFile, bool useDefaultsForRemaining = true,
-                 Configurations* base = nullptr);
+  explicit Configurations(const std::filesystem::path& configurationFile, bool useDefaultsForRemaining = true,
+                 const Configurations* base = nullptr);
 
   virtual ~Configurations(void) {
   }
@@ -1724,7 +1717,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   ///        existing Configurations to base all the values and then set rest of configuration via configuration file.
   /// @return True if successfully parsed, false otherwise. You may define 'ELPP_DEBUG_ASSERT_FAILURE' to make sure you
   ///         do not proceed without successful parse.
-  bool parseFromFile(const std::filesystem::path& configurationFile, Configurations* base = nullptr);
+  bool parseFromFile(const std::filesystem::path& configurationFile, const Configurations* base = nullptr);
 
   /// @brief Parse configurations from configuration string.
   ///
@@ -1734,22 +1727,22 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
   ///        existing Configurations to base all the values and then set rest of configuration via configuration text.
   /// @return True if successfully parsed, false otherwise. You may define 'ELPP_DEBUG_ASSERT_FAILURE' to make sure you
   ///         do not proceed without successful parse.
-  bool parseFromText(const std::string& configurationsString, Configurations* base = nullptr);
+  bool parseFromText(const std::string& configurationsString, const Configurations* base = nullptr);
 
   /// @brief Sets configuration based-off an existing configurations.
   /// @param base Pointer to existing configurations.
-  void setFromBase(Configurations* base);
+  void setFromBase(const Configurations* base);
 
   /// @brief Determines whether or not specified configuration type exists in the repository.
   ///
   /// @detail Returns as soon as first level is found.
   /// @param configurationType Type of configuration to check existence for.
-  bool hasConfiguration(ConfigurationType configurationType);
+  bool hasConfiguration(ConfigurationType configurationType) const;
 
   /// @brief Determines whether or not specified configuration type exists for specified level
   /// @param level Level to check
   /// @param configurationType Type of configuration to check existence for.
-  bool hasConfiguration(Level level, ConfigurationType configurationType);
+  bool hasConfiguration(Level level, ConfigurationType configurationType) const;
 
   /// @brief Sets value of configuration for specified level.
   ///
@@ -1767,7 +1760,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
 
   /// @brief Sets single configuration based on other single configuration.
   /// @see set(Level level, ConfigurationType configurationType, const std::string& value)
-  void set(Configuration* conf);
+  void set(const Configuration* conf);
 
   inline Configuration* get(Level level, ConfigurationType configurationType) {
     base::threading::ScopedLock scopedLock(lock());
@@ -1821,7 +1814,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
     /// @return True if successfully parsed, false otherwise. You may define '_STOP_ON_FIRSTELPP_ASSERTION' to make sure you
     ///         do not proceed without successful parse.
     static bool parseFromFile(const std::filesystem::path& configurationFile, Configurations* sender,
-                              Configurations* base = nullptr);
+                              const Configurations* base = nullptr);
 
     /// @brief Parse configurations from configuration string.
     ///
@@ -1834,7 +1827,7 @@ class Configurations : public base::utils::RegistryWithPred<Configuration, Confi
     ///        existing Configurations to base all the values and then set rest of configuration via configuration text.
     /// @return True if successfully parsed, false otherwise.
     static bool parseFromText(const std::string& configurationsString, Configurations* sender,
-                              Configurations* base = nullptr);
+                              const Configurations* base = nullptr);
 
    private:
     friend class el::Loggers;
@@ -1911,14 +1904,14 @@ class TypedConfigurations : public base::threading::ThreadSafe {
   bool toFile(Level level);
   const std::filesystem::path& filename(Level level);
   bool toStandardOutput(Level level);
-  const base::LogFormat& logFormat(Level level);
+  base::LogFormat& logFormat(Level level);
   const base::SubsecondPrecision& subsecondPrecision(Level level = Level::Global);
   const base::MillisecondsWidth& millisecondsWidth(Level level = Level::Global);
   bool performanceTracking(Level level = Level::Global);
   base::type::fstream_t* fileStream(Level level);
   std::size_t maxLogFileSize(Level level);
   std::size_t logFlushThreshold(Level level);
-  FilenameSet filenames();
+  FilenameSet filenames() const;
 
  private:
   Configurations* m_configurations;
@@ -2009,9 +2002,9 @@ class TypedConfigurations : public base::threading::ThreadSafe {
     }
   }
 
-  void build(Configurations* configurations);
-  unsigned long getULong(std::string confVal);
-  std::string resolveFilename(const std::string& filename);
+  void build(const Configurations* configurations);
+  static unsigned long getULong(std::string confVal);
+  static std::string resolveFilename(const std::string& filename);
   void insertFile(Level level, const std::string& fullFilename);
   bool unsafeValidateFileRolling(Level level, const PreRollOutCallback& preRollOutCallback);
 
@@ -2089,7 +2082,7 @@ class HitCounter {
       : m_filename(filename),
         m_lineNumber(lineNumber) {
     }
-    inline bool operator()(const HitCounter* counter) {
+    inline bool operator()(const HitCounter* counter) const {
       return ((counter != nullptr) &&
               (strcmp(counter->m_filename, m_filename) == 0) &&
               (counter->m_lineNumber == m_lineNumber));
@@ -2121,7 +2114,7 @@ class RegisteredHitCounters : public base::utils::RegistryWithPred<base::HitCoun
   bool validateNTimes(const char* filename, base::type::LineNumber lineNumber, std::size_t n);
 
   /// @brief Gets hit counter registered at specified position
-  inline const base::HitCounter* getCounter(const char* filename, base::type::LineNumber lineNumber) {
+  inline const base::HitCounter* getCounter(const char* filename, base::type::LineNumber lineNumber) const {
     base::threading::ScopedLock scopedLock(lock());
     return get(filename, lineNumber);
   }
@@ -2192,7 +2185,7 @@ class LogBuilder : base::NoCopy {
     ELPP_INTERNAL_INFO(3, "Destroying log builder...")
   }
   virtual base::type::string_t build(const LogMessage* logMessage, bool appendNewLine) const = 0;
-  void convertToColoredOutput(base::type::string_t* logLine, Level level);
+  void convertToColoredOutput(base::type::string_t* logLine, Level level) const;
  private:
   bool m_termSupportsColor;
   friend class el::base::DefaultLogDispatchCallback;
@@ -2328,7 +2321,7 @@ inline void FUNCTION_NAME(const T&);
     return m_stream;
   }
 
-  void resolveLoggerFormatSpec(void) const;
+  void resolveLoggerFormatSpec(void);
 };
 namespace base {
 /// @brief Loggers repository
@@ -2336,7 +2329,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
  public:
   explicit RegisteredLoggers(const LogBuilderPtr& defaultLogBuilder);
 
-  virtual ~RegisteredLoggers(void) {
+  ~RegisteredLoggers(void) override {
     unsafeFlushAll();
   }
 
@@ -2384,7 +2377,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
     unsafeFlushAll();
   }
 
-  inline void setDefaultLogBuilder(LogBuilderPtr& logBuilderPtr) {
+  inline void setDefaultLogBuilder(const LogBuilderPtr& logBuilderPtr) {
     base::threading::ScopedLock scopedLock(lock());
     m_defaultLogBuilder = logBuilderPtr;
   }
@@ -2427,7 +2420,7 @@ class VRegistry : base::NoCopy, public base::threading::ThreadSafe {
   void setFromArgs(const base::utils::CommandLineArgs* commandLineArgs);
 
   /// @brief Whether or not vModules enabled
-  inline bool vModulesEnabled(void) {
+  inline bool vModulesEnabled(void) const {
     return !base::utils::hasFlag(LoggingFlag::DisableVModules, *m_pFlags);
   }
 
@@ -2544,15 +2537,15 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
 
   virtual ~Storage(void);
 
-  inline bool validateEveryNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t occasion) {
+  inline bool validateEveryNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t occasion) const {
     return hitCounters()->validateEveryN(filename, lineNumber, occasion);
   }
 
-  inline bool validateAfterNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) {
+  inline bool validateAfterNCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) const {
     return hitCounters()->validateAfterN(filename, lineNumber, n);
   }
 
-  inline bool validateNTimesCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) {
+  inline bool validateNTimesCounter(const char* filename, base::type::LineNumber lineNumber, std::size_t n) const {
     return hitCounters()->validateNTimes(filename, lineNumber, n);
   }
 
@@ -2701,11 +2694,7 @@ class Storage : base::NoCopy, public base::threading::ThreadSafe {
   friend class el::base::PerformanceTracker;
   friend class el::base::LogDispatcher;
 
-  void setApplicationArguments(int argc, char** argv);
-
-  inline void setApplicationArguments(int argc, const char** argv) {
-    setApplicationArguments(argc, const_cast<char**>(argv));
-  }
+  void setApplicationArguments(int argc, const char** argv);
 };
 extern ELPP_EXPORT base::type::StoragePointer elStorage;
 #define ELPP el::base::elStorage
@@ -3177,7 +3166,7 @@ class NullWriter : base::NoCopy {
     return *this;
   }
 
-  inline operator bool() {
+  explicit inline operator bool() const {
     return true;
   }
 };
@@ -3224,7 +3213,7 @@ class Writer : base::NoCopy {
     return *this;
   }
 
-  inline operator bool() {
+  explicit inline operator bool() const {
     return true;
   }
 
@@ -3663,12 +3652,8 @@ class Helpers : base::StaticClass {
     return ELPP;
   }
   /// @brief Sets application arguments and figures out whats active for logging and whats not.
-  static inline void setArgs(int argc, char** argv) {
-    ELPP->setApplicationArguments(argc, argv);
-  }
-  /// @copydoc setArgs(int argc, char** argv)
   static inline void setArgs(int argc, const char** argv) {
-    ELPP->setApplicationArguments(argc, const_cast<char**>(argv));
+    ELPP->setApplicationArguments(argc, argv);
   }
   /// @brief Sets thread name for current thread. Requires std::thread
   static inline void setThreadName(const std::string& name) {
@@ -3786,7 +3771,7 @@ class Loggers : base::StaticClass {
   /// @brief Gets existing or registers new logger
   static Logger* getLogger(const std::string& identity, bool registerIfNotAvailable = true);
   /// @brief Changes default log builder for future loggers
-  static void setDefaultLogBuilder(el::LogBuilderPtr& logBuilderPtr);
+  static void setDefaultLogBuilder(const el::LogBuilderPtr& logBuilderPtr);
   /// @brief Installs logger registration callback, this callback is triggered when new logger is registered
   template <typename T>
   static inline bool installLoggerRegistrationCallback(const std::string& id) {
@@ -3828,7 +3813,7 @@ class Loggers : base::StaticClass {
   /// @brief Returns current default
   static const Configurations* defaultConfigurations(void);
   /// @brief Returns log stream reference pointer if needed by user
-  static const base::LogStreamsReferenceMapPtr logStreamsReference(void);
+  static base::LogStreamsReferenceMapPtr logStreamsReference(void);
   /// @brief Default typed configuration based on existing defaultConf
   static base::TypedConfigurations defaultTypedConfigurations(void);
   /// @brief Populates all logger IDs in current repository.
@@ -3895,10 +3880,10 @@ class Loggers : base::StaticClass {
 class VersionInfo : base::StaticClass {
  public:
   /// @brief Current version number
-  static const std::string version(void);
+  static std::string_view version(void);
 
   /// @brief Release date of current version
-  static const std::string releaseDate(void);
+  static std::string_view releaseDate(void);
 };
 }  // namespace el
 #undef VLOG_IS_ON

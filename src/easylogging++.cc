@@ -277,7 +277,7 @@ bool Configuration::Predicate::operator()(const Configuration* conf) const {
 // Configurations
 
 Configurations::Configurations(const std::filesystem::path& configurationFile,
-                               bool useDefaultsForRemaining, Configurations* base) :
+                               bool useDefaultsForRemaining, const Configurations* base) :
   m_configurationFile(configurationFile),
   m_isFromFile(false) {
   parseFromFile(configurationFile, base);
@@ -286,7 +286,8 @@ Configurations::Configurations(const std::filesystem::path& configurationFile,
   }
 }
 
-bool Configurations::parseFromFile(const std::filesystem::path& configurationFile, Configurations* base) {
+bool Configurations::parseFromFile(const std::filesystem::path& configurationFile,
+    const Configurations* base) {
   // We initial assertion with true because if we have assertion disabled, we want to pass this
   // check and if assertion is enabled we will have values re-assigned any way.
   bool assertionPassed = true;
@@ -302,7 +303,8 @@ bool Configurations::parseFromFile(const std::filesystem::path& configurationFil
   return success;
 }
 
-bool Configurations::parseFromText(const std::string& configurationsString, Configurations* base) {
+bool Configurations::parseFromText(const std::string& configurationsString,
+    const Configurations* base) {
   bool success = Parser::parseFromText(configurationsString, this, base);
   if (success) {
     m_isFromFile = false;
@@ -310,7 +312,7 @@ bool Configurations::parseFromText(const std::string& configurationsString, Conf
   return success;
 }
 
-void Configurations::setFromBase(Configurations* base) {
+void Configurations::setFromBase(const Configurations* base) {
   if (base == nullptr || base == this) {
     return;
   }
@@ -320,7 +322,7 @@ void Configurations::setFromBase(Configurations* base) {
   }
 }
 
-bool Configurations::hasConfiguration(ConfigurationType configurationType) {
+bool Configurations::hasConfiguration(ConfigurationType configurationType) const {
   base::type::EnumType lIndex = LevelHelper::kMinValid;
   bool result = false;
   LevelHelper::forEachLevel(&lIndex, [&](void) -> bool {
@@ -332,7 +334,7 @@ bool Configurations::hasConfiguration(ConfigurationType configurationType) {
   return result;
 }
 
-bool Configurations::hasConfiguration(Level level, ConfigurationType configurationType) {
+bool Configurations::hasConfiguration(Level level, ConfigurationType configurationType) const {
   base::threading::ScopedLock scopedLock(lock());
 #if ELPP_COMPILER_INTEL
   // We cant specify template types here, Intel C++ throws compilation error
@@ -351,7 +353,7 @@ void Configurations::set(Level level, ConfigurationType configurationType, const
   }
 }
 
-void Configurations::set(Configuration* conf) {
+void Configurations::set(const Configuration* conf) {
   if (conf == nullptr) {
     return;
   }
@@ -406,7 +408,7 @@ void Configurations::setRemainingToDefault(void) {
 }
 
 bool Configurations::Parser::parseFromFile(const std::filesystem::path& configurationFile, Configurations* sender,
-    Configurations* base) {
+    const Configurations* base) {
   sender->setFromBase(base);
   std::ifstream fileStream_(configurationFile.c_str(), std::ifstream::in);
   ELPP_ASSERT(fileStream_.is_open(), "Unable to open configuration file [" << configurationFile << "] for parsing.");
@@ -424,7 +426,7 @@ bool Configurations::Parser::parseFromFile(const std::filesystem::path& configur
 }
 
 bool Configurations::Parser::parseFromText(const std::string& configurationsString, Configurations* sender,
-    Configurations* base) {
+    const Configurations* base) {
   sender->setFromBase(base);
   bool parsedSuccessfully = false;
   std::stringstream ss(configurationsString);
@@ -535,7 +537,7 @@ bool Configurations::Parser::parseLine(std::string* line, std::string* currConfi
 }
 
 void Configurations::unsafeSetIfNotExist(Level level, ConfigurationType configurationType, const std::string& value) {
-  auto* conf = RegistryWithPred<Configuration, Configuration::Predicate>::get(level, configurationType);
+  const auto* conf = RegistryWithPred<Configuration, Configuration::Predicate>::get(level, configurationType);
   if (conf == nullptr) {
     unsafeSet(level, configurationType, value);
   }
@@ -579,7 +581,7 @@ void Configurations::unsafeSetGlobally(ConfigurationType configurationType, cons
 
 // LogBuilder
 
-void LogBuilder::convertToColoredOutput(base::type::string_t* logLine, Level level) {
+void LogBuilder::convertToColoredOutput(base::type::string_t* logLine, Level level) const {
   if (!m_termSupportsColor) return;
   const base::type::char_t* resetColor = ELPP_LITERAL("\x1b[0m");
   if (level == Level::Error || level == Level::Fatal)
@@ -640,14 +642,14 @@ void Logger::configure(const Configurations& configurations) {
   m_isConfigured = false;  // we set it to false in case if we fail
   initUnflushedCount();
   if (m_typedConfigurations != nullptr) {
-    auto* c = const_cast<Configurations*>(m_typedConfigurations->configurations());
+    const auto* c = m_typedConfigurations->configurations();
     if (c->hasConfiguration(Level::Global, ConfigurationType::Filename)) {
       flush();
     }
   }
   base::threading::ScopedLock scopedLock(lock());
   if (m_configurations != configurations) {
-    m_configurations.setFromBase(const_cast<Configurations*>(&configurations));
+    m_configurations.setFromBase(&configurations);
   }
   m_typedConfigurations =
     std::make_shared<base::TypedConfigurations>(&m_configurations, m_logStreamsReference);
@@ -701,12 +703,11 @@ void Logger::initUnflushedCount(void) {
   });
 }
 
-void Logger::resolveLoggerFormatSpec(void) const {
+void Logger::resolveLoggerFormatSpec(void) {
   base::type::EnumType lIndex = LevelHelper::kMinValid;
   LevelHelper::forEachLevel(&lIndex, [&](void) -> bool {
-    base::LogFormat* logFormat =
-    const_cast<base::LogFormat*>(&m_typedConfigurations->logFormat(LevelHelper::castFromInt(lIndex)));
-    base::utils::Str::replaceFirstWithEscape(logFormat->m_format, base::consts::kLoggerIdFormatSpecifier, m_id);
+    auto &logFormat = m_typedConfigurations->logFormat(LevelHelper::castFromInt(lIndex));
+    base::utils::Str::replaceFirstWithEscape(logFormat.m_format, base::consts::kLoggerIdFormatSpecifier, m_id);
     return false;
   });
 }
@@ -1015,7 +1016,7 @@ std::string OS::getDeviceName(void) {
 }
 #endif  // ELPP_OS_ANDROID
 
-const std::string OS::getBashOutput(const char* command) {
+std::string OS::getBashOutput(const char* command) {
 #if (ELPP_OS_UNIX && !ELPP_OS_ANDROID && !ELPP_CYGWIN)
   if (command == nullptr) {
     return std::string();
@@ -1177,7 +1178,7 @@ unsigned long long DateTime::getTimeDifference(const struct timeval& endTime, co
   return static_cast<unsigned long long>(conv(endTime) - conv(startTime));
 }
 
-struct ::tm* DateTime::buildTimeInfo(struct timeval* currTime, struct ::tm* timeInfo) {
+struct ::tm* DateTime::buildTimeInfo(const struct timeval* currTime, struct ::tm* timeInfo) {
 #if ELPP_OS_UNIX
   time_t rawTime = currTime->tv_sec;
   ::elpptime_r(&rawTime, timeInfo);
@@ -1269,7 +1270,7 @@ char* DateTime::parseFormat(char* buf, std::size_t bufSz, const char* format, co
 
 // CommandLineArgs
 
-void CommandLineArgs::setArgs(int argc, char** argv) {
+void CommandLineArgs::setArgs(int argc, const char** argv) {
   m_params.clear();
   m_paramsWithValue.clear();
   if (argc == 0 || argv == nullptr) {
@@ -1594,7 +1595,7 @@ bool TypedConfigurations::toStandardOutput(Level level) {
   return getConfigByVal<bool>(level, &m_toStandardOutputMap, "toStandardOutput");
 }
 
-const base::LogFormat& TypedConfigurations::logFormat(Level level) {
+base::LogFormat& TypedConfigurations::logFormat(Level level) {
   return getConfigByRef<base::LogFormat>(level, &m_logFormatMap, "logFormat");
 }
 
@@ -1622,7 +1623,7 @@ std::size_t TypedConfigurations::logFlushThreshold(Level level) {
   return getConfigByVal<std::size_t>(level, &m_logFlushThresholdMap, "logFlushThreshold");
 }
 
-FilenameSet TypedConfigurations::filenames() {
+FilenameSet TypedConfigurations::filenames() const {
   FilenameSet filenameSet;
   base::threading::ScopedLock scopedLock(lock());
 
@@ -1633,14 +1634,14 @@ FilenameSet TypedConfigurations::filenames() {
   return filenameSet;
 }
 
-void TypedConfigurations::build(Configurations* configurations) {
+void TypedConfigurations::build(const Configurations* configurations) {
   base::threading::ScopedLock scopedLock(lock());
   auto getBool = [] (std::string boolStr) -> bool {  // Pass by value for trimming
     base::utils::Str::trim(boolStr);
     return (boolStr == "TRUE" || boolStr == "true" || boolStr == "1");
   };
   std::vector<const Configuration*> withFileSizeLimit;
-  for (const auto& conf : *configurations) {
+  for (const auto& conf : configurations->list()) {
     // We cannot use switch on strong enums because Intel C++ dont support them yet
     if (conf->configurationType() == ConfigurationType::Enabled) {
       setValue(conf->level(), getBool(conf->value()), &m_enabledMap);
@@ -1673,7 +1674,7 @@ void TypedConfigurations::build(Configurations* configurations) {
     }
   }
   // As mentioned earlier, we will now set filename configuration in separate loop to deal with non-existent files
-  for (const auto& conf : *configurations) {
+  for (const auto& conf : configurations->list()) {
     if (conf->configurationType() == ConfigurationType::Filename) {
       insertFile(conf->level(), conf->value());
     }
@@ -2139,7 +2140,7 @@ bool Storage::uninstallCustomFormatSpecifier(const char* formatSpecifier) {
   return false;
 }
 
-void Storage::setApplicationArguments(int argc, char** argv) {
+void Storage::setApplicationArguments(int argc, const char** argv) {
   m_commandLineArgs.setArgs(argc, argv);
   m_vRegistry->setFromArgs(commandLineArgs());
   // default log file
@@ -2646,7 +2647,7 @@ void Writer::triggerDispatch(void) {
 	  }
 	  m_proceed = false;
 	  }
-	catch(std::exception &){
+	catch(const std::exception &) {
 		// Extremely low memory situation; don't let exception be unhandled.
 	}
 }
@@ -2938,7 +2939,7 @@ Logger* Loggers::getLogger(const std::string& identity, bool registerIfNotAvaila
   return ELPP->registeredLoggers()->get(identity, registerIfNotAvailable);
 }
 
-void Loggers::setDefaultLogBuilder(el::LogBuilderPtr& logBuilderPtr) {
+void Loggers::setDefaultLogBuilder(const el::LogBuilderPtr& logBuilderPtr) {
   ELPP->registeredLoggers()->setDefaultLogBuilder(logBuilderPtr);
 }
 
@@ -2996,7 +2997,7 @@ const Configurations* Loggers::defaultConfigurations(void) {
   return ELPP->registeredLoggers()->defaultConfigurations();
 }
 
-const base::LogStreamsReferenceMapPtr Loggers::logStreamsReference(void) {
+base::LogStreamsReferenceMapPtr Loggers::logStreamsReference(void) {
   return ELPP->registeredLoggers()->logStreamsReference();
 }
 
@@ -3091,12 +3092,12 @@ void Loggers::clearVModules(void) {
 
 // VersionInfo
 
-const std::string VersionInfo::version(void) {
-  return std::string("9.97.1");
+std::string_view VersionInfo::version(void) {
+  return "9.97.1";
 }
 /// @brief Release date of current version
-const std::string VersionInfo::releaseDate(void) {
-  return std::string("Thu Jul 20 2023 13:45:52 GMT+1000");
+std::string_view VersionInfo::releaseDate(void) {
+  return "Thu Jul 20 2023 13:45:52 GMT+1000";
 }
 
 } // namespace el
